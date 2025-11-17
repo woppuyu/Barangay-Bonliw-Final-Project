@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../database/db');
+const { sendWelcomeEmail } = require('../services/email');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key';
@@ -22,6 +23,14 @@ router.post('/register', async (req, res) => {
        RETURNING id`,
       [username, hashedPassword, full_name, email, phone, address]
     );
+    
+    // Send welcome email if email is provided
+    if (email) {
+      sendWelcomeEmail(email, full_name).catch(err => 
+        console.error('Failed to send welcome email:', err.message)
+      );
+    }
+    
     res.json({ message: 'Registration successful', userId: result.rows[0].id });
   } catch (err) {
     if (err.code === '23505') {
@@ -42,10 +51,10 @@ router.post('/login', async (req, res) => {
   try {
     const { rows } = await pool.query(`SELECT * FROM users WHERE username = $1`, [username]);
     const user = rows[0];
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!user) return res.status(401).json({ error: 'Invalid username or password' });
 
     const isValidPassword = bcrypt.compareSync(password, user.password);
-    if (!isValidPassword) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!isValidPassword) return res.status(401).json({ error: 'Invalid username or password' });
 
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role },

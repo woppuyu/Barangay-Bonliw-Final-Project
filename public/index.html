@@ -10,77 +10,276 @@
   <div class="hero">
     <div class="container">
       <h1>Barangay Bonliw Appointment System</h1>
-      <p>Schedule appointments and request documents online for Barangay Bonliw. No need to visit the barangay hall!</p>
+      <p>Skip the long lines and multiple trips to the barangay hall. Book your appointment online, check required documents beforehand, and simply arrive at your scheduled time. Fast, easy, and convenient for both residents and barangay officials.</p>
       <div style="display: flex; gap: 12px; justify-content: center; margin-top: 32px;">
-        <button class="btn btn-primary" id="openLogin">Login</button>
-        <a href="/register" class="btn btn-secondary">Create Account</a>
+        <button class="btn btn-primary" id="openAuthModal">Get Started</button>
       </div>
     </div>
   </div>
 
-  <!-- Login Modal on Home -->
-  <div class="modal-overlay" id="homeLoginModal" aria-hidden="true">
-    <div class="modal-content centered" style="max-width: 440px; width: 100%;">
+  <!-- Combined Login/Register Modal -->
+  <div class="modal-overlay" id="authModal" aria-hidden="true">
+    <div class="modal-content centered" style="max-width: 480px; width: 100%;">
       <div class="modal-header" style="text-align: center;">
-        <h3 style="width:100%;">Login</h3>
+        <h3 style="width:100%;" id="authModalTitle">Login</h3>
       </div>
       <div class="modal-body">
         <div id="message"></div>
-        <form id="loginForm">
+        
+        <!-- Login Form -->
+        <form id="loginForm" style="display: block;">
           <div class="form-group">
-            <label for="username">Username</label>
-            <input type="text" id="username" name="username" required autocomplete="username">
+            <label for="login_username">Username</label>
+            <input type="text" id="login_username" name="username" required autocomplete="username">
           </div>
           <div class="form-group">
-            <label for="password">Password</label>
-            <input type="password" id="password" name="password" required autocomplete="current-password">
+            <label for="login_password">Password</label>
+            <input type="password" id="login_password" name="password" required autocomplete="current-password">
           </div>
           <div class="modal-footer" style="justify-content: center;">
-            <button type="button" class="btn-secondary" id="cancelLogin">Cancel</button>
+            <button type="button" class="btn-secondary" id="cancelAuth">Cancel</button>
             <button type="submit" class="btn btn-primary">Login</button>
+          </div>
+          <div class="auth-footer" style="margin-top: 16px;">
+            Don't have an account? <a href="#" id="switchToRegister">Create one</a>
+          </div>
+        </form>
+
+        <!-- Register Form -->
+        <form id="registerForm" style="display: none;" novalidate>
+          <div class="form-group">
+            <label for="reg_username">Username *</label>
+            <input type="text" id="reg_username" name="username" required autocomplete="username">
+            <div class="field-error" id="error_reg_username"></div>
+          </div>
+          <div class="form-group">
+            <label for="reg_password">Password *</label>
+            <input type="password" id="reg_password" name="password" required autocomplete="new-password">
+            <div class="field-error" id="error_reg_password"></div>
+          </div>
+          <div class="form-group">
+            <label for="reg_full_name">Full Name *</label>
+            <input type="text" id="reg_full_name" name="full_name" required autocomplete="name">
+            <div class="field-error" id="error_reg_full_name"></div>
+          </div>
+          <div class="form-group">
+            <label for="reg_email">Email</label>
+            <input type="email" id="reg_email" name="email" autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label for="reg_phone">Phone Number</label>
+            <input type="tel" id="reg_phone" name="phone" autocomplete="tel">
+          </div>
+          <div class="form-group">
+            <label for="reg_address">Address</label>
+            <textarea id="reg_address" name="address" rows="3"></textarea>
+          </div>
+          <div class="modal-footer" style="justify-content: center;">
+            <button type="button" class="btn-secondary" id="cancelRegister">Cancel</button>
+            <button type="submit" class="btn btn-primary">Register Account</button>
+          </div>
+          <div class="auth-footer" style="margin-top: 16px;">
+            Already have an account? <a href="#" id="switchToLogin">Login here</a>
           </div>
         </form>
       </div>
     </div>
   </div>
 
-  <script src="/js/login.js"></script>
   <script>
     (function(){
-      const modal = document.getElementById('homeLoginModal');
-      const openBtn = document.getElementById('openLogin');
-      const cancelBtn = document.getElementById('cancelLogin');
-      const username = document.getElementById('username');
-      const form = document.getElementById('loginForm');
+      const modal = document.getElementById('authModal');
+      const openBtn = document.getElementById('openAuthModal');
+      const cancelAuthBtn = document.getElementById('cancelAuth');
+      const cancelRegisterBtn = document.getElementById('cancelRegister');
+      const switchToRegisterBtn = document.getElementById('switchToRegister');
+      const switchToLoginBtn = document.getElementById('switchToLogin');
+      const loginForm = document.getElementById('loginForm');
+      const registerForm = document.getElementById('registerForm');
+      const modalTitle = document.getElementById('authModalTitle');
       const messageDiv = document.getElementById('message');
+      let currentMode = 'login';
 
-      function clearLoginForm() {
-        if (form) form.reset();
+      function clearForms() {
+        if (loginForm) loginForm.reset();
+        if (registerForm) registerForm.reset();
         if (messageDiv) messageDiv.innerHTML = '';
       }
 
-      function openModal() {
+      function showLogin() {
+        currentMode = 'login';
+        loginForm.style.display = 'block';
+        registerForm.style.display = 'none';
+        modalTitle.textContent = 'Login';
+        messageDiv.innerHTML = '';
+        localStorage.setItem('lastAuthMode', 'login');
+      }
+
+      function showRegister() {
+        currentMode = 'register';
+        loginForm.style.display = 'none';
+        registerForm.style.display = 'block';
+        modalTitle.textContent = 'Register Account';
+        messageDiv.innerHTML = '';
+        clearRegisterErrors();
+        localStorage.setItem('lastAuthMode', 'register');
+      }
+
+      function openModal(mode = 'login') {
+        const lastMode = localStorage.getItem('lastAuthMode') || mode;
+        if (lastMode === 'register') {
+          showRegister();
+        } else {
+          showLogin();
+        }
         modal.classList.add('active');
         document.body.classList.add('modal-open');
-        setTimeout(() => { if (username) username.focus(); }, 50);
       }
+
       function closeModal() {
         modal.classList.remove('active');
-        document.body.classList.remove('modal-open');
-        clearLoginForm();
+        setTimeout(() => {
+          document.body.classList.remove('modal-open');
+        }, 300);
       }
-      if (openBtn) openBtn.addEventListener('click', openModal);
-      if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+      if (openBtn) openBtn.addEventListener('click', () => openModal());
+      if (cancelAuthBtn) cancelAuthBtn.addEventListener('click', () => { clearForms(); closeModal(); });
+      if (cancelRegisterBtn) cancelRegisterBtn.addEventListener('click', () => { clearForms(); closeModal(); });
+      if (switchToRegisterBtn) switchToRegisterBtn.addEventListener('click', (e) => { e.preventDefault(); showRegister(); });
+      if (switchToLoginBtn) switchToLoginBtn.addEventListener('click', (e) => { e.preventDefault(); showLogin(); });
+
+      // Close on overlay click (don't clear forms)
       modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+      // Close on ESC key (don't clear forms)
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && modal.classList.contains('active')) {
           closeModal();
         }
       });
 
-      // If URL has #login, open modal automatically (e.g., from Register page)
-      if (window.location.hash === '#login') {
-        openModal();
+      // Handle login form submission
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        messageDiv.innerHTML = '';
+
+        const formData = {
+          username: document.getElementById('login_username').value,
+          password: document.getElementById('login_password').value
+        };
+
+        try {
+          const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+            window.location.href = data.user.role === 'admin' ? '/admin' : '/dashboard';
+          } else {
+            messageDiv.innerHTML = `<div class="alert alert-error">${data.error || data.message || 'Login failed'}</div>`;
+          }
+        } catch (error) {
+          messageDiv.innerHTML = '<div class="alert alert-error">An error occurred. Please try again.</div>';
+        }
+      });
+
+      // Clear register field errors
+      function clearRegisterErrors() {
+        document.getElementById('error_reg_username').textContent = '';
+        document.getElementById('error_reg_password').textContent = '';
+        document.getElementById('error_reg_full_name').textContent = '';
+      }
+
+      function showRegisterError(fieldId, message) {
+        const errorDiv = document.getElementById(`error_reg_${fieldId}`);
+        if (errorDiv) {
+          errorDiv.textContent = message;
+        }
+      }
+
+      function validateRegisterForm() {
+        clearRegisterErrors();
+        let isValid = true;
+
+        const username = document.getElementById('reg_username').value.trim();
+        const password = document.getElementById('reg_password').value;
+        const fullName = document.getElementById('reg_full_name').value.trim();
+
+        if (!username) {
+          showRegisterError('username', 'Username is required');
+          isValid = false;
+        }
+
+        if (!password) {
+          showRegisterError('password', 'Password is required');
+          isValid = false;
+        } else if (password.length < 6) {
+          showRegisterError('password', 'Password must be at least 6 characters');
+          isValid = false;
+        }
+
+        if (!fullName) {
+          showRegisterError('full_name', 'Full name is required');
+          isValid = false;
+        }
+
+        return isValid;
+      }
+
+      // Handle register form submission
+      registerForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        messageDiv.innerHTML = '';
+
+        if (!validateRegisterForm()) {
+          return;
+        }
+
+        const formData = {
+          username: document.getElementById('reg_username').value,
+          password: document.getElementById('reg_password').value,
+          full_name: document.getElementById('reg_full_name').value,
+          email: document.getElementById('reg_email').value,
+          phone: document.getElementById('reg_phone').value,
+          address: document.getElementById('reg_address').value
+        };
+
+        try {
+          const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            messageDiv.innerHTML = '<div class="alert alert-success">Account created! Switching to login...</div>';
+            setTimeout(() => {
+              clearForms();
+              showLogin();
+            }, 2000);
+          } else {
+            messageDiv.innerHTML = `<div class="alert alert-error">${data.message}</div>`;
+          }
+        } catch (error) {
+          messageDiv.innerHTML = '<div class="alert alert-error">An error occurred. Please try again.</div>';
+        }
+      });
+
+      // Check URL hash for #login or #register
+      const hash = window.location.hash;
+      if (hash === '#login') {
+        openModal('login');
+      } else if (hash === '#register') {
+        openModal('register');
       }
     })();
   </script>

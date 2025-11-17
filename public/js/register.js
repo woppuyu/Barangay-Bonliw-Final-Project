@@ -26,7 +26,7 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
     if (response.ok) {
       messageDiv.innerHTML = '<div class="alert alert-success">Registration successful! Redirecting to login...</div>';
       setTimeout(() => {
-        window.location.href = '/login';
+        window.location.href = '/#login';
       }, 2000);
     } else {
       messageDiv.innerHTML = `<div class="alert alert-error">${data.error}</div>`;

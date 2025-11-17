@@ -1,6 +1,7 @@
 const express = require('express');
 const { pool } = require('../database/db');
 const { verifyToken } = require('./auth');
+const { sendAppointmentConfirmation, sendStatusUpdate } = require('../services/email');
 
 const router = express.Router();
 
@@ -56,6 +57,26 @@ router.post('/', verifyToken, async (req, res) => {
     );
 
     await client.query('COMMIT');
+    
+    // Get user details and send confirmation email
+    const { rows: userRows } = await client.query(
+      `SELECT full_name, email FROM users WHERE id = $1`,
+      [user_id]
+    );
+    const user = userRows[0];
+    
+    if (user && user.email) {
+      const appointmentData = {
+        document_type,
+        purpose,
+        appointment_date,
+        appointment_time
+      };
+      sendAppointmentConfirmation(user.email, user.full_name, appointmentData).catch(err =>
+        console.error('Failed to send appointment confirmation:', err.message)
+      );
+    }
+    
     res.json({ message: 'Appointment created successfully', appointmentId: rows[0].id });
   } catch (e) {
     await client.query('ROLLBACK');
@@ -104,11 +125,49 @@ router.put('/:id/status', verifyToken, async (req, res) => {
   const { id } = req.params;
   const { status, notes } = req.body;
   try {
+    // Get current appointment with user details
+    const { rows: currentRows } = await pool.query(
+      `SELECT a.*, u.email, u.full_name 
+       FROM appointments a 
+       JOIN users u ON a.user_id = u.id 
+       WHERE a.id = $1`,
+      [id]
+    );
+    
+    if (currentRows.length === 0) {
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+    
+    const currentAppointment = currentRows[0];
+    const oldStatus = currentAppointment.status;
+    
+    // Update the appointment
     const result = await pool.query(
       `UPDATE appointments SET status = $1, notes = $2 WHERE id = $3`,
       [status, notes || null, id]
     );
+    
     if (result.rowCount === 0) return res.status(404).json({ error: 'Appointment not found' });
+    
+    // Send email notification if status changed
+    if (currentAppointment.email && oldStatus !== status) {
+      const appointmentData = {
+        document_type: currentAppointment.document_type,
+        appointment_date: currentAppointment.appointment_date,
+        appointment_time: currentAppointment.appointment_time,
+        notes: notes
+      };
+      sendStatusUpdate(
+        currentAppointment.email,
+        currentAppointment.full_name,
+        appointmentData,
+        oldStatus,
+        status
+      ).catch(err =>
+        console.error('Failed to send status update email:', err.message)
+      );
+    }
+    
     res.json({ message: 'Appointment updated successfully' });
   } catch (e) {
     res.status(500).json({ error: 'Failed to update appointment' });

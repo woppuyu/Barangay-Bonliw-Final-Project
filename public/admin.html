@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Barangay System</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>Barangay System - Admin</h1>
+      <nav>
+        <ul>
+          <li><span id="userInfo" style="color: #2d3748; font-weight: 500;"></span></li>
+          <li><button id="logoutBtn">Logout</button></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>Manage Appointments</h2>
+      <div id="message"></div>
+      <div id="appointmentsContainer">
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>Loading all appointments...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for updating appointment -->
+  <div id="updateModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; backdrop-filter: blur(2px);">
+    <div style="max-width: 500px; margin: 100px auto; background: white; padding: 32px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+      <h3 style="margin-bottom: 24px; color: #1a202c; font-size: 1.25rem;">Update Appointment</h3>
+      <form id="updateForm">
+        <input type="hidden" id="appointmentId">
+        <div class="form-group">
+          <label for="status">Status</label>
+          <select id="status" name="status" required>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="completed">Completed</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="notes">Admin Notes (optional)</label>
+          <textarea id="notes" name="notes" rows="3" placeholder="Add any notes for the resident"></textarea>
+        </div>
+        <div style="display: flex; gap: 12px;">
+          <button type="submit" class="btn btn-success" style="flex: 1;">Update Status</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal()" style="flex: 1;">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/modal-utils.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

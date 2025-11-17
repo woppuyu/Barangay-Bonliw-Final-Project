@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resident Dashboard - Barangay System</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>Barangay Appointment System</h1>
+      <nav>
+        <ul>
+          <li><span id="userInfo" style="color: #2d3748; font-weight: 500;"></span></li>
+          <li><button id="logoutBtn">Logout</button></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>Book New Appointment</h2>
+      <div id="message"></div>
+      <form id="appointmentForm">
+        <div class="form-group">
+          <label for="document_type">Document Type *</label>
+          <select id="document_type" name="document_type" required>
+            <option value="">Select document type</option>
+            <option value="Barangay Clearance">Barangay Clearance</option>
+            <option value="Certificate of Residency">Certificate of Residency</option>
+            <option value="Certificate of Indigency">Certificate of Indigency</option>
+            <option value="Business Permit">Business Permit</option>
+            <option value="Community Tax Certificate">Community Tax Certificate (Cedula)</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="purpose">Purpose (optional)</label>
+          <textarea id="purpose" name="purpose" rows="3" placeholder="Brief description of why you need this document"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="appointment_date">Appointment Date *</label>
+          <input type="date" id="appointment_date" name="appointment_date" required>
+        </div>
+        <div class="form-group">
+          <label for="appointment_time">Appointment Time *</label>
+          <select id="appointment_time" name="appointment_time" required>
+            <option value="">Select a date first</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Book Appointment</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>My Appointments</h2>
+      <div id="appointmentsContainer">
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>Loading your appointments...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/modal-utils.js"></script>
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>

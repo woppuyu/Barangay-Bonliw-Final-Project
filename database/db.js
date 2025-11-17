@@ -1,0 +1,116 @@
+const { Pool } = require('pg');
+const bcrypt = require('bcryptjs');
+
+// Pool reads PG* vars from process.env via dotenv in server.js
+const pool = new Pool({
+  host: process.env.PGHOST || 'localhost',
+  port: Number(process.env.PGPORT || 5432),
+  user: process.env.PGUSER || 'postgres',
+  password: process.env.PGPASSWORD || '',
+  database: process.env.PGDATABASE || 'barangay_db',
+});
+
+async function initialize() {
+  // Ensure connection works and create schema + seed
+  await pool.query('SELECT 1');
+  await createSchema();
+  await seedDefaults();
+  console.log('Connected to PostgreSQL and ensured schema');
+}
+
+async function createSchema() {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(64) UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        full_name VARCHAR(128) NOT NULL,
+        email VARCHAR(128),
+        phone VARCHAR(32),
+        address TEXT,
+        role VARCHAR(16) NOT NULL DEFAULT 'resident',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS time_slots (
+        id SERIAL PRIMARY KEY,
+        date DATE NOT NULL,
+        time TIME NOT NULL,
+        is_available BOOLEAN NOT NULL DEFAULT TRUE,
+        CONSTRAINT uq_timeslot UNIQUE (date, time)
+      );
+      CREATE INDEX IF NOT EXISTS idx_timeslots_available ON time_slots(is_available, date);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS appointments (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        document_type VARCHAR(64) NOT NULL,
+        appointment_date DATE NOT NULL,
+        appointment_time TIME NOT NULL,
+        purpose TEXT,
+        status VARCHAR(16) NOT NULL DEFAULT 'pending',
+        notes TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_appts_user ON appointments(user_id);
+      CREATE INDEX IF NOT EXISTS idx_appts_status ON appointments(status);
+      CREATE INDEX IF NOT EXISTS idx_appts_datetime ON appointments(appointment_date, appointment_time);
+    `);
+
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+async function seedDefaults() {
+  // Create default admin
+  const hash = bcrypt.hashSync('admin123', 10);
+  await pool.query(
+    `INSERT INTO users (username, password, full_name, role)
+     VALUES ($1,$2,$3,$4)
+     ON CONFLICT (username) DO NOTHING`,
+    ['admin', hash, 'Administrator', 'admin']
+  );
+
+  // Generate time slots for next 30 days if not present
+  const times = ['09:00:00','10:00:00','11:00:00','13:00:00','14:00:00','15:00:00','16:00:00'];
+  const start = new Date();
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (let i = 1; i <= 30; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const dateStr = d.toISOString().slice(0,10);
+      for (const t of times) {
+        await client.query(
+          `INSERT INTO time_slots (date, time) VALUES ($1,$2)
+           ON CONFLICT (date, time) DO NOTHING`,
+          [dateStr, t]
+        );
+      }
+    }
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = { initialize, pool };

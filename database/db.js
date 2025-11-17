@@ -2,13 +2,23 @@ const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 
 // Pool reads PG* vars from process.env via dotenv in server.js
-const pool = new Pool({
-  host: process.env.PGHOST || 'localhost',
-  port: Number(process.env.PGPORT || 5432),
-  user: process.env.PGUSER || 'postgres',
-  password: process.env.PGPASSWORD || '',
-  database: process.env.PGDATABASE || 'barangay_db',
-});
+// Supports both individual credentials and DATABASE_URL connection string
+const pool = new Pool(
+  process.env.DATABASE_URL
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: {
+          rejectUnauthorized: false
+        }
+      }
+    : {
+        host: process.env.PGHOST || 'localhost',
+        port: Number(process.env.PGPORT || 5432),
+        user: process.env.PGUSER || 'postgres',
+        password: process.env.PGPASSWORD || '',
+        database: process.env.PGDATABASE || 'barangay_db',
+      }
+);
 
 async function initialize() {
   // Ensure connection works and create schema + seed

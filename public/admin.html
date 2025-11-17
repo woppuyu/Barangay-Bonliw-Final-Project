@@ -9,15 +9,32 @@
 <body>
   <header>
     <div class="container">
-      <h1>Barangay Bonliw - Admin</h1>
-      <nav>
-        <ul>
-          <li><span id="userInfo" style="color: #2d3748; font-weight: 500;"></span></li>
-          <li><button id="logoutBtn">Logout</button></li>
-        </ul>
-      </nav>
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <button class="burger-toggle" id="burgerToggle" aria-label="Menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <h1>Barangay Bonliw - Admin</h1>
+      </div>
+      <div class="user-info" id="userInfo"></div>
     </div>
   </header>
+
+  <!-- Sidebar Navigation -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <nav class="sidebar-nav" id="sidebarNav">
+    <div class="sidebar-header">
+      <h3 id="sidebarUserName"></h3>
+      <p>Administrator</p>
+    </div>
+    <div class="sidebar-body">
+      <ul class="sidebar-menu">
+        <li><a href="/admin">Manage Appointments</a></li>
+        <li><button id="logoutBtn" class="logout">Logout</button></li>
+      </ul>
+    </div>
+  </nav>
 
   <div class="container">
     <div class="card">

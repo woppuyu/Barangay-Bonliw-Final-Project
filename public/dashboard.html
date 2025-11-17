@@ -9,21 +9,41 @@
 <body>
   <header>
     <div class="container">
-      <h1>Barangay Bonliw Appointment System</h1>
-      <nav>
-        <ul>
-          <li><span id="userInfo" style="color: #2d3748; font-weight: 500;"></span></li>
-          <li><button id="logoutBtn">Logout</button></li>
-        </ul>
-      </nav>
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <button class="burger-toggle" id="burgerToggle" aria-label="Menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <h1>Barangay Bonliw Appointment System</h1>
+      </div>
+      <div class="user-info" id="userInfo"></div>
     </div>
   </header>
 
+  <!-- Sidebar Navigation -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <nav class="sidebar-nav" id="sidebarNav">
+    <div class="sidebar-header">
+      <h3 id="sidebarUserName"></h3>
+      <p>Resident Dashboard</p>
+    </div>
+    <div class="sidebar-body">
+      <ul class="sidebar-menu">
+        <li><a href="#" id="myAppointmentsLink">My Appointments</a></li>
+        <li><a href="#" id="bookAppointmentLink">Book Appointment</a></li>
+        <li><button id="logoutBtn" class="logout">Logout</button></li>
+      </ul>
+    </div>
+  </nav>
+
   <div class="container">
-    <div class="card">
+    <div id="message"></div>
+    
+    <!-- Book Appointment Panel -->
+    <div class="card" id="bookAppointmentPanel" style="display: none;">
       <h2>Book New Appointment</h2>
-      <div id="message"></div>
-      <form id="appointmentForm">
+      <form id="appointmentForm" novalidate>
         <div class="form-group">
           <label for="document_type">Document Type *</label>
           <select id="document_type" name="document_type" required>
@@ -35,6 +55,7 @@
             <option value="Community Tax Certificate">Community Tax Certificate (Cedula)</option>
             <option value="Other">Other</option>
           </select>
+          <div class="field-error" id="error_document_type"></div>
         </div>
         <div class="form-group">
           <label for="purpose">Purpose (optional)</label>
@@ -43,18 +64,21 @@
         <div class="form-group">
           <label for="appointment_date">Appointment Date *</label>
           <input type="date" id="appointment_date" name="appointment_date" required>
+          <div class="field-error" id="error_appointment_date"></div>
         </div>
         <div class="form-group">
           <label for="appointment_time">Appointment Time *</label>
           <select id="appointment_time" name="appointment_time" required>
             <option value="">Select a date first</option>
           </select>
+          <div class="field-error" id="error_appointment_time"></div>
         </div>
         <button type="submit" class="btn btn-primary">Book Appointment</button>
       </form>
     </div>
 
-    <div class="card">
+    <!-- My Appointments Panel -->
+    <div class="card" id="myAppointmentsPanel">
       <h2>My Appointments</h2>
       <div id="appointmentsContainer">
         <div class="loading">

@@ -8,6 +8,75 @@ if (!token || !user) {
 
 // Display user info
 document.getElementById('userInfo').textContent = `Welcome, ${user.full_name}`;
+document.getElementById('sidebarUserName').textContent = user.full_name;
+
+// Burger menu toggle (define first)
+const burgerToggle = document.getElementById('burgerToggle');
+const sidebarNav = document.getElementById('sidebarNav');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+function openSidebar() {
+  burgerToggle.classList.add('active');
+  sidebarNav.classList.add('active');
+  sidebarOverlay.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeSidebar() {
+  burgerToggle.classList.remove('active');
+  sidebarNav.classList.remove('active');
+  sidebarOverlay.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+if (burgerToggle) {
+  burgerToggle.addEventListener('click', () => {
+    if (sidebarNav.classList.contains('active')) {
+      closeSidebar();
+    } else {
+      openSidebar();
+    }
+  });
+}
+
+if (sidebarOverlay) {
+  sidebarOverlay.addEventListener('click', closeSidebar);
+}
+
+// Panel navigation (define after closeSidebar)
+const bookAppointmentPanel = document.getElementById('bookAppointmentPanel');
+const myAppointmentsPanel = document.getElementById('myAppointmentsPanel');
+const bookAppointmentLink = document.getElementById('bookAppointmentLink');
+const myAppointmentsLink = document.getElementById('myAppointmentsLink');
+
+function showBookAppointment() {
+  bookAppointmentPanel.style.display = 'block';
+  myAppointmentsPanel.style.display = 'none';
+  closeSidebar();
+}
+
+function showMyAppointments() {
+  bookAppointmentPanel.style.display = 'none';
+  myAppointmentsPanel.style.display = 'block';
+  closeSidebar();
+}
+
+if (bookAppointmentLink) {
+  bookAppointmentLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    showBookAppointment();
+  });
+}
+
+if (myAppointmentsLink) {
+  myAppointmentsLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    showMyAppointments();
+  });
+}
+
+// Default view: My Appointments
+showMyAppointments();
 
 // Logout functionality
 document.getElementById('logoutBtn').addEventListener('click', (e) => {
@@ -50,9 +119,51 @@ document.getElementById('appointment_date').addEventListener('change', async (e)
   }
 });
 
+// Form validation helper
+function clearFieldErrors() {
+  document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
+}
+
+function showFieldError(fieldId, message) {
+  const errorDiv = document.getElementById(`error_${fieldId}`);
+  if (errorDiv) {
+    errorDiv.textContent = message;
+  }
+}
+
+function validateForm() {
+  clearFieldErrors();
+  let isValid = true;
+
+  const documentType = document.getElementById('document_type').value;
+  const appointmentDate = document.getElementById('appointment_date').value;
+  const appointmentTime = document.getElementById('appointment_time').value;
+
+  if (!documentType) {
+    showFieldError('document_type', 'Please select a document type');
+    isValid = false;
+  }
+
+  if (!appointmentDate) {
+    showFieldError('appointment_date', 'Please select an appointment date');
+    isValid = false;
+  }
+
+  if (!appointmentTime) {
+    showFieldError('appointment_time', 'Please select an appointment time');
+    isValid = false;
+  }
+
+  return isValid;
+}
+
 // Handle appointment form submission
 document.getElementById('appointmentForm').addEventListener('submit', async (e) => {
   e.preventDefault();
+  
+  if (!validateForm()) {
+    return;
+  }
   
   const formData = {
     document_type: document.getElementById('document_type').value,
@@ -76,9 +187,15 @@ document.getElementById('appointmentForm').addEventListener('submit', async (e) 
     const data = await response.json();
 
     if (response.ok) {
+      const messageDiv = document.getElementById('message');
       messageDiv.innerHTML = '<div class="alert alert-success">Appointment booked successfully!</div>';
       document.getElementById('appointmentForm').reset();
       loadAppointments();
+      // Switch to My Appointments view after booking
+      setTimeout(() => {
+        showMyAppointments();
+        messageDiv.innerHTML = '';
+      }, 2000);
     } else {
       messageDiv.innerHTML = `<div class="alert alert-error">${data.error}</div>`;
     }

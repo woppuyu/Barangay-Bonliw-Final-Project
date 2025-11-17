@@ -8,6 +8,40 @@ if (!token || !user || user.role !== 'admin') {
 
 // Display user info
 document.getElementById('userInfo').textContent = `Admin: ${user.full_name}`;
+document.getElementById('sidebarUserName').textContent = user.full_name;
+
+// Burger menu toggle
+const burgerToggle = document.getElementById('burgerToggle');
+const sidebarNav = document.getElementById('sidebarNav');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+function openSidebar() {
+  burgerToggle.classList.add('active');
+  sidebarNav.classList.add('active');
+  sidebarOverlay.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeSidebar() {
+  burgerToggle.classList.remove('active');
+  sidebarNav.classList.remove('active');
+  sidebarOverlay.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+if (burgerToggle) {
+  burgerToggle.addEventListener('click', () => {
+    if (sidebarNav.classList.contains('active')) {
+      closeSidebar();
+    } else {
+      openSidebar();
+    }
+  });
+}
+
+if (sidebarOverlay) {
+  sidebarOverlay.addEventListener('click', closeSidebar);
+}
 
 // Logout functionality
 document.getElementById('logoutBtn').addEventListener('click', (e) => {

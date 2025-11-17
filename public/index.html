@@ -3,20 +3,87 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Barangay Appointment System</title>
+  <title>Barangay Bonliw Appointment System</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
   <div class="hero">
     <div class="container">
-      <h1>Barangay Appointment System</h1>
-      <p>Schedule appointments and request documents online. No need to visit the barangay hall!</p>
+      <h1>Barangay Bonliw Appointment System</h1>
+      <p>Schedule appointments and request documents online for Barangay Bonliw. No need to visit the barangay hall!</p>
       <div style="display: flex; gap: 12px; justify-content: center; margin-top: 32px;">
-        <a href="/login" class="btn btn-primary">Login</a>
+        <button class="btn btn-primary" id="openLogin">Login</button>
         <a href="/register" class="btn btn-secondary">Create Account</a>
       </div>
     </div>
   </div>
+
+  <!-- Login Modal on Home -->
+  <div class="modal-overlay" id="homeLoginModal" aria-hidden="true">
+    <div class="modal-content centered" style="max-width: 440px; width: 100%;">
+      <div class="modal-header" style="text-align: center;">
+        <h3 style="width:100%;">Login</h3>
+      </div>
+      <div class="modal-body">
+        <div id="message"></div>
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required autocomplete="username">
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required autocomplete="current-password">
+          </div>
+          <div class="modal-footer" style="justify-content: center;">
+            <button type="button" class="btn-secondary" id="cancelLogin">Cancel</button>
+            <button type="submit" class="btn btn-primary">Login</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/login.js"></script>
+  <script>
+    (function(){
+      const modal = document.getElementById('homeLoginModal');
+      const openBtn = document.getElementById('openLogin');
+      const cancelBtn = document.getElementById('cancelLogin');
+      const username = document.getElementById('username');
+      const form = document.getElementById('loginForm');
+      const messageDiv = document.getElementById('message');
+
+      function clearLoginForm() {
+        if (form) form.reset();
+        if (messageDiv) messageDiv.innerHTML = '';
+      }
+
+      function openModal() {
+        modal.classList.add('active');
+        document.body.classList.add('modal-open');
+        setTimeout(() => { if (username) username.focus(); }, 50);
+      }
+      function closeModal() {
+        modal.classList.remove('active');
+        document.body.classList.remove('modal-open');
+        clearLoginForm();
+      }
+      if (openBtn) openBtn.addEventListener('click', openModal);
+      if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+      modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+          closeModal();
+        }
+      });
+
+      // If URL has #login, open modal automatically (e.g., from Register page)
+      if (window.location.hash === '#login') {
+        openModal();
+      }
+    })();
+  </script>
 
   <div class="container">
     <div class="features">

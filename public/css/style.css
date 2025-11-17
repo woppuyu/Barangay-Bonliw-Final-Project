@@ -443,6 +443,7 @@ tbody tr:hover {
   background: rgba(0, 0, 0, 0.5);
   z-index: 1000;
   animation: fadeIn 0.2s ease-out;
+  backdrop-filter: blur(3px);
 }
 
 .modal-overlay.active {
@@ -531,6 +532,21 @@ tbody tr:hover {
 
 .btn-secondary:hover {
   background: #cbd5e0;
+}
+
+/* Centered modal variant for home login */
+.modal-content.centered .modal-header h3 {
+  text-align: center;
+  width: 100%;
+}
+.modal-content.centered + .modal-footer,
+.modal-content.centered .modal-footer {
+  justify-content: center;
+}
+
+/* Prevent background scroll when modal is open */
+body.modal-open {
+  overflow: hidden;
 }
 
 .btn-success {

@@ -14,7 +14,7 @@ document.getElementById('logoutBtn').addEventListener('click', (e) => {
   e.preventDefault();
   localStorage.removeItem('token');
   localStorage.removeItem('user');
-  window.location.href = '/login';
+  window.location.href = '/';
 });
 
 // Load all appointments

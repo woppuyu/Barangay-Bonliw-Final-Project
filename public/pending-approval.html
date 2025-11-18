@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pending Approval - Barangay Bonliw</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <button class="burger-toggle" id="burgerToggle" aria-label="Menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <h1>Barangay Bonliw Appointment System</h1>
+      </div>
+      <div class="user-info" id="userInfo"></div>
+    </div>
+  </header>
+
+  <!-- Sidebar Navigation -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <nav class="sidebar-nav" id="sidebarNav">
+    <div class="sidebar-header">
+      <h3 id="sidebarUserName"></h3>
+      <p id="sidebarRole">Pending Verification</p>
+    </div>
+    <div class="sidebar-body">
+      <ul class="sidebar-menu">
+        <li><a href="/pending-approval">Account Status</a></li>
+        <li><button id="logoutBtn" class="logout">Logout</button></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="card" style="text-align: center; padding: 60px 40px;">
+      <div style="font-size: 64px; margin-bottom: 24px;">⏳</div>
+      <h2 style="color: #2d3748; margin-bottom: 16px;">Account Pending Approval</h2>
+      <p style="color: #718096; font-size: 16px; line-height: 1.8; max-width: 500px; margin: 0 auto 32px;">
+        Thank you for registering! Your account is currently under review by barangay officials to verify that you are a resident of Barangay Bonliw.
+      </p>
+      
+      <div style="background: #fff5e1; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 8px; text-align: left; max-width: 500px; margin: 0 auto 32px;">
+        <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.6;">
+          <strong>⚠️ What happens next?</strong><br><br>
+          • Barangay officials will verify your information<br>
+          • This process typically takes 1-3 business days<br>
+          • You'll receive an email once your account is approved<br>
+          • After approval, you can book appointments and request documents
+        </p>
+      </div>
+
+      <div style="background: #f7fafc; padding: 20px; border-radius: 8px; text-align: left; max-width: 500px; margin: 0 auto;">
+        <h3 style="color: #2d3748; font-size: 16px; margin-bottom: 12px;">Your Registration Details</h3>
+        <table style="width: 100%; border: none;">
+          <tr>
+            <td style="padding: 8px 0; color: #718096; font-size: 14px; border: none;">Username:</td>
+            <td style="padding: 8px 0; color: #2d3748; font-weight: 500; font-size: 14px; border: none;" id="displayUsername">-</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #718096; font-size: 14px; border: none;">Full Name:</td>
+            <td style="padding: 8px 0; color: #2d3748; font-weight: 500; font-size: 14px; border: none;" id="displayFullName">-</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #718096; font-size: 14px; border: none;">Email:</td>
+            <td style="padding: 8px 0; color: #2d3748; font-weight: 500; font-size: 14px; border: none;" id="displayEmail">-</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #718096; font-size: 14px; border: none;">Phone:</td>
+            <td style="padding: 8px 0; color: #2d3748; font-weight: 500; font-size: 14px; border: none;" id="displayPhone">-</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #718096; font-size: 14px; border: none;">Registered:</td>
+            <td style="padding: 8px 0; color: #2d3748; font-weight: 500; font-size: 14px; border: none;" id="displayCreatedAt">-</td>
+          </tr>
+        </table>
+      </div>
+
+      <p style="color: #a0aec0; font-size: 13px; margin-top: 32px;">
+        Need help? Contact the barangay office during business hours.
+      </p>
+    </div>
+  </div>
+
+  <script src="/js/toast.js"></script>
+  <script>
+    // Check if user is logged in
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user'));
+
+    if (!token || !user) {
+      window.location.href = '/#login';
+    }
+
+    // Display user info in header
+    document.getElementById('userInfo').textContent = `Welcome, ${user.full_name}`;
+    document.getElementById('sidebarUserName').textContent = user.full_name;
+
+    // Burger menu toggle
+    const burgerToggle = document.getElementById('burgerToggle');
+    const sidebarNav = document.getElementById('sidebarNav');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+    function openSidebar() {
+      sidebarNav.classList.add('active');
+      sidebarOverlay.classList.add('active');
+      burgerToggle.classList.add('active');
+    }
+
+    function closeSidebar() {
+      sidebarNav.classList.remove('active');
+      sidebarOverlay.classList.remove('active');
+      burgerToggle.classList.remove('active');
+    }
+
+    burgerToggle.addEventListener('click', () => {
+      if (sidebarNav.classList.contains('active')) {
+        closeSidebar();
+      } else {
+        openSidebar();
+      }
+    });
+
+    sidebarOverlay.addEventListener('click', closeSidebar);
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/';
+    });
+
+    // Load and display user details
+    async function loadUserDetails() {
+      try {
+        const response = await fetch('/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          
+          // Display user details
+          document.getElementById('displayUsername').textContent = userData.username || '-';
+          document.getElementById('displayFullName').textContent = userData.full_name || '-';
+          document.getElementById('displayEmail').textContent = userData.email || 'Not provided';
+          document.getElementById('displayPhone').textContent = userData.phone || 'Not provided';
+          
+          // Format registration date
+          if (userData.created_at) {
+            const date = new Date(userData.created_at);
+            document.getElementById('displayCreatedAt').textContent = date.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+          }
+
+          // If user is actually approved, redirect to dashboard
+          if (userData.approved) {
+            window.location.href = '/dashboard';
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user details:', error);
+      }
+    }
+
+    loadUserDetails();
+
+    // Auto-refresh every 30 seconds to check approval status
+    setInterval(loadUserDetails, 30000);
+  </script>
+</body>
+</html>

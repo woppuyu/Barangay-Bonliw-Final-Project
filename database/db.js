@@ -43,9 +43,25 @@ async function createSchema() {
         phone VARCHAR(32),
         address TEXT,
         role VARCHAR(16) NOT NULL DEFAULT 'resident',
+        approved BOOLEAN NOT NULL DEFAULT FALSE,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+      CREATE INDEX IF NOT EXISTS idx_users_approved ON users(approved);
+    `);
+
+    // Add approved column to existing users table if it doesn't exist
+    await client.query(`
+      DO $$ 
+      BEGIN 
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'users' AND column_name = 'approved'
+        ) THEN
+          ALTER TABLE users ADD COLUMN approved BOOLEAN NOT NULL DEFAULT FALSE;
+          CREATE INDEX IF NOT EXISTS idx_users_approved ON users(approved);
+        END IF;
+      END $$;
     `);
 
     await client.query(`
@@ -102,13 +118,13 @@ async function createSchema() {
 }
 
 async function seedDefaults() {
-  // Create default admin
+  // Create default admin (always approved)
   const hash = bcrypt.hashSync('admin123', 10);
   await pool.query(
-    `INSERT INTO users (username, password, full_name, role)
-     VALUES ($1,$2,$3,$4)
-     ON CONFLICT (username) DO NOTHING`,
-    ['admin', hash, 'Administrator', 'admin']
+    `INSERT INTO users (username, password, full_name, role, approved)
+     VALUES ($1,$2,$3,$4,$5)
+     ON CONFLICT (username) DO UPDATE SET approved = TRUE`,
+    ['admin', hash, 'Administrator', 'admin', true]
   );
 
   // Generate time slots for next 30 days if not present

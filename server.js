@@ -33,12 +33,20 @@ app.get('/dashboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
+app.get('/pending-approval', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'pending-approval.html'));
+});
+
 app.get('/settings', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'settings.html'));
 });
 
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+app.get('/manage-users', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'manage-users.html'));
 });
 
 // Initialize database and start server

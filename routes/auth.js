@@ -87,7 +87,8 @@ router.post('/login', async (req, res) => {
         id: user.id,
         username: user.username,
         full_name: user.full_name,
-        role: user.role
+        role: user.role,
+        approved: user.approved
       }
     });
   } catch (err) {
@@ -237,7 +238,7 @@ function verifyToken(req, res, next) {
 router.get('/me', verifyToken, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT id, username, full_name, email, phone, address, role FROM users WHERE id = $1',
+      'SELECT id, username, full_name, email, phone, address, role, approved, created_at FROM users WHERE id = $1',
       [req.userId]
     );
     if (rows.length === 0) {
@@ -419,6 +420,144 @@ router.put('/update-password', verifyToken, async (req, res) => {
     res.json({ message: 'Password updated successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update password' });
+  }
+});
+
+// Admin-only routes for user management
+
+// Get all users (admin only)
+router.get('/users', verifyToken, async (req, res) => {
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, username, full_name, email, phone, address, role, approved, created_at 
+       FROM users 
+       WHERE role = 'resident'
+       ORDER BY approved ASC, created_at DESC`
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// Approve user (admin only)
+router.put('/users/:id/approve', verifyToken, async (req, res) => {
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  const userId = parseInt(req.params.id);
+
+  try {
+    const result = await pool.query(
+      'UPDATE users SET approved = TRUE WHERE id = $1 AND role = $\'resident\' RETURNING *',
+      [userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // TODO: Send approval email notification
+    const user = result.rows[0];
+    if (user.email) {
+      // You can add email notification here later
+      console.log(`User approved: ${user.username} (${user.email})`);
+    }
+
+    res.json({ message: 'User approved successfully', user: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to approve user' });
+  }
+});
+
+// Revoke approval (admin only)
+router.put('/users/:id/revoke', verifyToken, async (req, res) => {
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  const userId = parseInt(req.params.id);
+
+  try {
+    const result = await pool.query(
+      'UPDATE users SET approved = FALSE WHERE id = $1 AND role = $\'resident\' RETURNING *',
+      [userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ message: 'User approval revoked', user: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to revoke approval' });
+  }
+});
+
+// Update user (admin only)
+router.put('/users/:id', verifyToken, async (req, res) => {
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  const userId = parseInt(req.params.id);
+  const { full_name, email, phone, address } = req.body;
+
+  if (!full_name) {
+    return res.status(400).json({ error: 'Full name is required' });
+  }
+
+  try {
+    let phoneValue = null;
+    if (phone && String(phone).trim() !== '') {
+      const normalized = normalizePHPhone(phone);
+      if (!normalized) {
+        return res.status(400).json({ error: 'Enter a valid PH phone number (+63 or 09)' });
+      }
+      phoneValue = normalized;
+    }
+
+    const result = await pool.query(
+      'UPDATE users SET full_name = $1, email = $2, phone = $3, address = $4 WHERE id = $5 AND role = $\'resident\' RETURNING *',
+      [full_name, email || null, phoneValue, address || null, userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ message: 'User updated successfully', user: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+// Delete user (admin only)
+router.delete('/users/:id', verifyToken, async (req, res) => {
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  const userId = parseInt(req.params.id);
+
+  try {
+    const result = await pool.query(
+      'DELETE FROM users WHERE id = $1 AND role = $\'resident\' RETURNING username',
+      [userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found or cannot be deleted' });
+    }
+
+    res.json({ message: 'User deleted successfully', username: result.rows[0].username });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete user' });
   }
 });
 

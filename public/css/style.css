@@ -154,7 +154,7 @@ nav a:hover, nav button:hover {
   padding: 0;
 }
 
-    padding: 24px; /* No-op context update to ensure CSS remains; sliding handled inline. No further CSS required. */
+.sidebar-menu {
   list-style: none;
   display: flex;
   flex-direction: column;
@@ -1106,3 +1106,44 @@ body.modal-open {
     font-size: 14px;
   }
 }
+
+/* Filter Tabs */
+.filter-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #718096;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-tab:hover {
+  color: #3182ce;
+  background: #f7fafc;
+}
+
+.filter-tab.active {
+  color: #3182ce;
+  border-bottom-color: #3182ce;
+}
+
+.filter-tab .badge {
+  background: #e2e8f0;
+  color: #4a5568;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.filter-tab.active .badge {
+  background: #3182ce;
+  color: white;
+}
+

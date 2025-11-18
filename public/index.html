@@ -262,7 +262,15 @@
           if (response.ok) {
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
-            window.location.href = data.user.role === 'admin' ? '/admin' : '/dashboard';
+            
+            // Redirect based on role and approval status
+            if (data.user.role === 'admin') {
+              window.location.href = '/admin';
+            } else if (data.user.approved) {
+              window.location.href = '/dashboard';
+            } else {
+              window.location.href = '/pending-approval';
+            }
           } else {
             showToast(data.error || data.message || 'Login failed', 'error');
           }

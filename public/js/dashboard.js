@@ -6,6 +6,20 @@ if (!token || !user) {
   window.location.href = '/#login';
 }
 
+// Check if user is approved (residents only)
+if (user.role === 'resident') {
+  fetch('/api/auth/me', {
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (!data.approved) {
+      window.location.href = '/pending-approval';
+    }
+  })
+  .catch(err => console.error('Error checking approval status:', err));
+}
+
 // Display user info
 document.getElementById('userInfo').textContent = `Welcome, ${user.full_name}`;
 document.getElementById('sidebarUserName').textContent = user.full_name;

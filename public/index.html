@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Barangay Bonliw Appointment System</title>
   <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/toast.js"></script>
+  <script src="/js/password-toggle.js"></script>
 </head>
 <body>
   <div class="hero">
@@ -34,7 +36,10 @@
           </div>
           <div class="form-group">
             <label for="login_password">Password</label>
-            <input type="password" id="login_password" name="password" required autocomplete="current-password">
+            <div class="password-field">
+              <input type="password" id="login_password" name="password" required autocomplete="current-password">
+              <button type="button" class="toggle-password" aria-label="Show password" data-target="login_password"></button>
+            </div>
           </div>
           <div class="modal-footer" style="justify-content: center;">
             <button type="button" class="btn-secondary" id="cancelAuth">Cancel</button>
@@ -45,43 +50,65 @@
           </div>
         </form>
 
-        <!-- Register Form -->
-        <form id="registerForm" style="display: none;" novalidate>
-          <div class="form-group">
-            <label for="reg_username">Username *</label>
-            <input type="text" id="reg_username" name="username" required autocomplete="username">
-            <div class="field-error" id="error_reg_username"></div>
+        <!-- Register (two-step with slide) -->
+        <div id="registerViewport" style="display:none; overflow:hidden;">
+          <div id="registerSteps" style="display:flex; width:200%; transition: transform 0.3s ease;">
+            <!-- Step 1: Details -->
+            <form id="registerForm" style="flex: 0 0 50%; padding-right: 8px;" novalidate>
+              <div class="form-group">
+                <label for="reg_username">Username *</label>
+                <input type="text" id="reg_username" name="username" required autocomplete="username">
+                <div class="field-error" id="error_reg_username"></div>
+              </div>
+              <div class="form-group">
+                <label for="reg_password">Password *</label>
+                <div class="password-field">
+                  <input type="password" id="reg_password" name="password" required autocomplete="new-password">
+                  <button type="button" class="toggle-password" aria-label="Show password" data-target="reg_password"></button>
+                </div>
+                <div class="field-error" id="error_reg_password"></div>
+              </div>
+              <div class="form-group">
+                <label for="reg_full_name">Full Name *</label>
+                <input type="text" id="reg_full_name" name="full_name" required autocomplete="name">
+                <div class="field-error" id="error_reg_full_name"></div>
+              </div>
+              <div class="form-group">
+                <label for="reg_contact">Email/Phone Number</label>
+                <input type="text" id="reg_contact" name="contact">
+                <div class="field-error" id="error_reg_contact"></div>
+              </div>
+              <div class="form-group">
+                <label for="reg_address">Address</label>
+                <textarea id="reg_address" name="address" rows="3"></textarea>
+              </div>
+              <div class="modal-footer" style="justify-content: center;">
+                <button type="button" class="btn-secondary" id="cancelRegister">Cancel</button>
+                <button type="submit" class="btn btn-primary">Continue</button>
+              </div>
+              <div class="auth-footer" style="margin-top: 16px;">
+                Already have an account? <a href="#" id="switchToLogin">Login here</a>
+              </div>
+            </form>
+
+            <!-- Step 2: Email Verification -->
+            <form id="registerVerifyForm" style="flex: 0 0 50%; padding-left: 8px; display: none;">
+              <p id="verifyHelp" style="margin-bottom: 16px; color:#4a5568; font-size: 14px;">Enter the 6-digit code sent to your email.</p>
+              <div class="form-group">
+                <label for="reg_verification_code">Verification Code</label>
+                <input type="text" id="reg_verification_code" maxlength="6" placeholder="123456" required>
+                <div class="field-error" id="error_reg_code"></div>
+              </div>
+              <div class="modal-footer" style="justify-content: space-between;">
+                <button type="button" class="btn-secondary" id="backToRegister">Back</button>
+                <div style="display:flex; gap: 8px;">
+                  <button type="button" class="btn btn-secondary" id="resendCodeBtn">Resend Code</button>
+                  <button type="submit" class="btn btn-primary">Create Account</button>
+                </div>
+              </div>
+            </form>
           </div>
-          <div class="form-group">
-            <label for="reg_password">Password *</label>
-            <input type="password" id="reg_password" name="password" required autocomplete="new-password">
-            <div class="field-error" id="error_reg_password"></div>
-          </div>
-          <div class="form-group">
-            <label for="reg_full_name">Full Name *</label>
-            <input type="text" id="reg_full_name" name="full_name" required autocomplete="name">
-            <div class="field-error" id="error_reg_full_name"></div>
-          </div>
-          <div class="form-group">
-            <label for="reg_email">Email</label>
-            <input type="email" id="reg_email" name="email" autocomplete="email">
-          </div>
-          <div class="form-group">
-            <label for="reg_phone">Phone Number</label>
-            <input type="tel" id="reg_phone" name="phone" autocomplete="tel">
-          </div>
-          <div class="form-group">
-            <label for="reg_address">Address</label>
-            <textarea id="reg_address" name="address" rows="3"></textarea>
-          </div>
-          <div class="modal-footer" style="justify-content: center;">
-            <button type="button" class="btn-secondary" id="cancelRegister">Cancel</button>
-            <button type="submit" class="btn btn-primary">Register Account</button>
-          </div>
-          <div class="auth-footer" style="margin-top: 16px;">
-            Already have an account? <a href="#" id="switchToLogin">Login here</a>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   </div>
@@ -95,21 +122,50 @@
       const switchToRegisterBtn = document.getElementById('switchToRegister');
       const switchToLoginBtn = document.getElementById('switchToLogin');
       const loginForm = document.getElementById('loginForm');
+      const registerViewport = document.getElementById('registerViewport');
+      const registerSteps = document.getElementById('registerSteps');
       const registerForm = document.getElementById('registerForm');
+      const registerVerifyForm = document.getElementById('registerVerifyForm');
+      const verifyHelp = document.getElementById('verifyHelp');
+      const resendCodeBtn = document.getElementById('resendCodeBtn');
       const modalTitle = document.getElementById('authModalTitle');
       const messageDiv = document.getElementById('message');
+      let regToken = null;
+      // Dynamic label update for contact field
+      const regContactInput = document.getElementById('reg_contact');
+      const regContactLabel = document.querySelector('label[for="reg_contact"]');
+      function updateContactLabel() {
+        if (!regContactInput || !regContactLabel) return;
+        const v = regContactInput.value.trim();
+        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+        const isPHPhone = /^(?:\+63\d{10}|0\d{10})$/.test(v);
+        if (!v) {
+          regContactLabel.textContent = 'Email/Phone Number';
+        } else if (isEmail) {
+          regContactLabel.textContent = 'Email';
+        } else if (isPHPhone) {
+          regContactLabel.textContent = 'Phone Number (+63 or 09)';
+        } else {
+          regContactLabel.textContent = 'Email/Phone Number';
+        }
+      }
+      if (regContactInput) {
+        regContactInput.addEventListener('input', updateContactLabel);
+        updateContactLabel();
+      }
       let currentMode = 'login';
 
       function clearForms() {
         if (loginForm) loginForm.reset();
         if (registerForm) registerForm.reset();
         if (messageDiv) messageDiv.innerHTML = '';
+        clearRegisterErrors();
       }
 
       function showLogin() {
         currentMode = 'login';
         loginForm.style.display = 'block';
-        registerForm.style.display = 'none';
+        registerViewport.style.display = 'none';
         modalTitle.textContent = 'Login';
         messageDiv.innerHTML = '';
         localStorage.setItem('lastAuthMode', 'login');
@@ -118,7 +174,10 @@
       function showRegister() {
         currentMode = 'register';
         loginForm.style.display = 'none';
+        registerViewport.style.display = 'block';
         registerForm.style.display = 'block';
+        if (registerVerifyForm) registerVerifyForm.style.display = 'none';
+        if (registerSteps) registerSteps.style.transform = 'translateX(0)';
         modalTitle.textContent = 'Register Account';
         messageDiv.innerHTML = '';
         clearRegisterErrors();
@@ -144,17 +203,39 @@
       }
 
       if (openBtn) openBtn.addEventListener('click', () => openModal());
-      if (cancelAuthBtn) cancelAuthBtn.addEventListener('click', () => { clearForms(); closeModal(); });
-      if (cancelRegisterBtn) cancelRegisterBtn.addEventListener('click', () => { clearForms(); closeModal(); });
-      if (switchToRegisterBtn) switchToRegisterBtn.addEventListener('click', (e) => { e.preventDefault(); showRegister(); });
-      if (switchToLoginBtn) switchToLoginBtn.addEventListener('click', (e) => { e.preventDefault(); showLogin(); });
+      
+      // Clear forms when explicitly cancelling
+      if (cancelAuthBtn) cancelAuthBtn.addEventListener('click', () => { 
+        clearForms(); 
+        closeModal(); 
+      });
+      if (cancelRegisterBtn) cancelRegisterBtn.addEventListener('click', () => { 
+        clearForms(); 
+        closeModal(); 
+      });
+      
+      // Don't clear forms when switching between login/register
+      if (switchToRegisterBtn) switchToRegisterBtn.addEventListener('click', (e) => { 
+        e.preventDefault(); 
+        showRegister(); 
+      });
+      if (switchToLoginBtn) switchToLoginBtn.addEventListener('click', (e) => { 
+        e.preventDefault(); 
+        showLogin(); 
+      });
 
-      // Close on overlay click (don't clear forms)
-      modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+      // Close on overlay click (clear forms)
+      modal.addEventListener('click', (e) => { 
+        if (e.target === modal) {
+          clearForms();
+          closeModal();
+        }
+      });
 
-      // Close on ESC key (don't clear forms)
+      // Close on ESC key (clear forms)
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && modal.classList.contains('active')) {
+          clearForms();
           closeModal();
         }
       });
@@ -183,10 +264,10 @@
             localStorage.setItem('user', JSON.stringify(data.user));
             window.location.href = data.user.role === 'admin' ? '/admin' : '/dashboard';
           } else {
-            messageDiv.innerHTML = `<div class="alert alert-error">${data.error || data.message || 'Login failed'}</div>`;
+            showToast(data.error || data.message || 'Login failed', 'error');
           }
         } catch (error) {
-          messageDiv.innerHTML = '<div class="alert alert-error">An error occurred. Please try again.</div>';
+          showToast('An error occurred. Please try again.', 'error');
         }
       });
 
@@ -195,6 +276,8 @@
         document.getElementById('error_reg_username').textContent = '';
         document.getElementById('error_reg_password').textContent = '';
         document.getElementById('error_reg_full_name').textContent = '';
+        const c = document.getElementById('error_reg_contact');
+        if (c) c.textContent = '';
       }
 
       function showRegisterError(fieldId, message) {
@@ -211,6 +294,7 @@
         const username = document.getElementById('reg_username').value.trim();
         const password = document.getElementById('reg_password').value;
         const fullName = document.getElementById('reg_full_name').value.trim();
+        const contact = (document.getElementById('reg_contact')?.value || '').trim();
 
         if (!username) {
           showRegisterError('username', 'Username is required');
@@ -220,8 +304,8 @@
         if (!password) {
           showRegisterError('password', 'Password is required');
           isValid = false;
-        } else if (password.length < 6) {
-          showRegisterError('password', 'Password must be at least 6 characters');
+        } else if (password.length < 8) {
+          showRegisterError('password', 'Password must be at least 8 characters');
           isValid = false;
         }
 
@@ -230,10 +314,20 @@
           isValid = false;
         }
 
+        if (contact) {
+          const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact);
+          const isPHPhone = /^(?:\+63\d{10}|0\d{10})$/.test(contact);
+          if (!isEmail && !isPHPhone) {
+            const c = document.getElementById('error_reg_contact');
+            if (c) c.textContent = 'Enter a valid email or PH phone (+63 or 09)';
+            isValid = false;
+          }
+        }
+
         return isValid;
       }
 
-      // Handle register form submission
+      // Handle register step 1
       registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         messageDiv.innerHTML = '';
@@ -246,31 +340,103 @@
           username: document.getElementById('reg_username').value,
           password: document.getElementById('reg_password').value,
           full_name: document.getElementById('reg_full_name').value,
-          email: document.getElementById('reg_email').value,
-          phone: document.getElementById('reg_phone').value,
+          contact: document.getElementById('reg_contact')?.value.trim(),
           address: document.getElementById('reg_address').value
         };
 
         try {
-          const response = await fetch('/api/auth/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
-          });
+          const isEmail = formData.contact && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contact);
+          const isPHPhone = formData.contact && /^(?:\+63\d{10}|0\d{10})$/.test(formData.contact);
 
-          const data = await response.json();
-
-          if (response.ok) {
-            messageDiv.innerHTML = '<div class="alert alert-success">Account created! Switching to login...</div>';
-            setTimeout(() => {
-              clearForms();
-              showLogin();
-            }, 2000);
+          if (isEmail) {
+            const resp = await fetch('/api/auth/register-initiate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: formData.username, password: formData.password, full_name: formData.full_name, contact: formData.contact, address: formData.address })
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+              showToast(data.error || 'Failed to send verification code', 'error');
+              return;
+            }
+            regToken = data.regToken;
+            verifyHelp.textContent = `Enter the 6-digit code sent to ${formData.contact}.`;
+            registerVerifyForm.style.display = 'block';
+            registerSteps.style.transform = 'translateX(-50%)';
+          } else if (isPHPhone) {
+            const resp = await fetch('/api/auth/register', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: formData.username, password: formData.password, full_name: formData.full_name, email: null, phone: formData.contact, address: formData.address })
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+              showToast('Account created! Switching to login...', 'success');
+              setTimeout(() => { clearForms(); showLogin(); }, 1500);
+            } else {
+              showToast(data.error || data.message || 'Registration failed', 'error');
+            }
           } else {
-            messageDiv.innerHTML = `<div class="alert alert-error">${data.message}</div>`;
+            showToast('Enter a valid email or PH phone (+63 or 09)', 'error');
           }
         } catch (error) {
-          messageDiv.innerHTML = '<div class="alert alert-error">An error occurred. Please try again.</div>';
+          showToast('An error occurred. Please try again.', 'error');
+        }
+      });
+
+      // Step 2: verify code and complete
+      document.getElementById('registerVerifyForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const code = document.getElementById('reg_verification_code').value.trim();
+        if (!/^[0-9]{6}$/.test(code)) {
+          const el = document.getElementById('error_reg_code');
+          if (el) el.textContent = 'Enter the 6-digit code';
+          return;
+        }
+        try {
+          const resp = await fetch('/api/auth/register-complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ regToken, code })
+          });
+          const data = await resp.json();
+          if (resp.ok) {
+            showToast('Email verified! Account created. Switching to login…', 'success');
+            setTimeout(() => { clearForms(); showLogin(); }, 1500);
+          } else {
+            showToast(data.error || 'Verification failed', 'error');
+          }
+        } catch (err) {
+          showToast('An error occurred. Please try again.', 'error');
+        }
+      });
+
+      document.getElementById('backToRegister').addEventListener('click', () => {
+        registerSteps.style.transform = 'translateX(0)';
+      });
+
+      document.getElementById('resendCodeBtn').addEventListener('click', async () => {
+        const payload = {
+          username: document.getElementById('reg_username').value,
+          password: document.getElementById('reg_password').value,
+          full_name: document.getElementById('reg_full_name').value,
+          contact: document.getElementById('reg_contact').value.trim()
+        };
+        try {
+          const resp = await fetch('/api/auth/register-initiate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const data = await resp.json();
+          if (resp.ok) {
+            regToken = data.regToken;
+            showToast('Verification code resent', 'info');
+          } else {
+            showToast(data.error || 'Failed to resend code', 'error');
+          }
+        } catch (e) {
+          showToast('An error occurred. Please try again.', 'error');
         }
       });
 

@@ -69,6 +69,17 @@ async function loadAppointments() {
     } else {
       let html = '<div style="overflow-x: auto;"><table><thead><tr><th>Resident</th><th>Contact</th><th>Document Type</th><th>Purpose</th><th>Date</th><th>Time</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead><tbody>';
       
+      // Local formatter for dates
+      const formatDate = (value) => {
+        const opts = { year: 'numeric', month: 'short', day: 'numeric' };
+        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+          const [y, m, d] = value.split('-').map(Number);
+          return new Date(y, m - 1, d).toLocaleDateString(undefined, opts);
+        }
+        const dt = new Date(value);
+        return isNaN(dt) ? value : dt.toLocaleDateString(undefined, opts);
+      };
+
       appointments.forEach(apt => {
         // Show delete button only for completed or rejected appointments
         const showDelete = apt.status === 'completed' || apt.status === 'rejected';
@@ -79,7 +90,7 @@ async function loadAppointments() {
             <td>${apt.phone || apt.email || '-'}</td>
             <td>${apt.document_type}</td>
             <td>${apt.purpose || '-'}</td>
-            <td>${apt.appointment_date}</td>
+            <td>${formatDate(apt.appointment_date)}</td>
             <td>${apt.appointment_time}</td>
             <td><span class="status status-${apt.status}">${apt.status.toUpperCase()}</span></td>
             <td>${apt.notes || '-'}</td>
@@ -138,17 +149,14 @@ document.getElementById('updateForm').addEventListener('submit', async (e) => {
     const data = await response.json();
 
     if (response.ok) {
-      messageDiv.innerHTML = '<div class="alert alert-success">Appointment updated successfully!</div>';
+      showToast('Appointment updated successfully!', 'success');
       closeModal();
       loadAppointments();
-      setTimeout(() => {
-        messageDiv.innerHTML = '';
-      }, 3000);
     } else {
-      messageDiv.innerHTML = `<div class="alert alert-error">${data.error}</div>`;
+      showToast(data.error || 'Failed to update appointment.', 'error');
     }
   } catch (error) {
-    messageDiv.innerHTML = '<div class="alert alert-error">Failed to update appointment.</div>';
+    showToast('Failed to update appointment.', 'error');
     console.error('Error:', error);
   }
 });
@@ -176,23 +184,14 @@ async function performDelete(id) {
     const data = await response.json();
 
     if (response.ok) {
-      messageDiv.innerHTML = '<div class="alert alert-success">Appointment removed successfully!</div>';
+      showToast('Appointment removed successfully!', 'success');
       loadAppointments();
-      setTimeout(() => {
-        messageDiv.innerHTML = '';
-      }, 3000);
     } else {
-      messageDiv.innerHTML = `<div class="alert alert-error">${data.error}</div>`;
-      setTimeout(() => {
-        messageDiv.innerHTML = '';
-      }, 3000);
+      showToast(data.error || 'Failed to remove appointment.', 'error');
     }
   } catch (error) {
-    messageDiv.innerHTML = '<div class="alert alert-error">Failed to remove appointment.</div>';
+    showToast('Failed to remove appointment.', 'error');
     console.error('Error:', error);
-    setTimeout(() => {
-      messageDiv.innerHTML = '';
-    }, 3000);
   }
 }
 

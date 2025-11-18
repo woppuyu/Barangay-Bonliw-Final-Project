@@ -236,8 +236,43 @@ async function sendStatusUpdate(to, fullName, appointment, oldStatus, newStatus)
   }
 }
 
+// Send email verification code
+async function sendVerificationCode(to, fullName, code) {
+  if (!to) return;
+  
+  try {
+    await transporter.sendMail({
+      from: `"Barangay Bonliw" <${process.env.EMAIL_USER}>`,
+      to: to,
+      subject: 'Email Verification Code - Barangay Bonliw',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2d3748;">Email Verification</h2>
+          <p style="color: #4a5568;">Dear ${fullName},</p>
+          <p style="color: #4a5568;">You requested to change your email address for your Barangay Bonliw account.</p>
+          <div style="background: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+            <p style="color: #718096; margin-bottom: 10px;">Your verification code is:</p>
+            <h1 style="color: #3182ce; font-size: 36px; letter-spacing: 8px; margin: 0;">${code}</h1>
+          </div>
+          <p style="color: #e53e3e; font-size: 14px;">⚠️ This code expires in 10 minutes.</p>
+          <p style="color: #718096; font-size: 13px;">If you didn't request this, please ignore this email and your account will remain secure.</p>
+          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
+          <p style="color: #718096; font-size: 12px;">
+            This is an automated message from Barangay Bonliw Appointment System.
+          </p>
+        </div>
+      `
+    });
+    console.log(`Verification code sent to ${to}`);
+  } catch (error) {
+    console.error('Error sending verification code:', error.message);
+    throw error; // Re-throw to let caller handle it
+  }
+}
+
 module.exports = {
   sendWelcomeEmail,
   sendAppointmentConfirmation,
-  sendStatusUpdate
+  sendStatusUpdate,
+  sendVerificationCode
 };

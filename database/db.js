@@ -69,11 +69,27 @@ async function createSchema() {
         purpose TEXT,
         status VARCHAR(16) NOT NULL DEFAULT 'pending',
         notes TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS idx_appts_user ON appointments(user_id);
       CREATE INDEX IF NOT EXISTS idx_appts_status ON appointments(status);
       CREATE INDEX IF NOT EXISTS idx_appts_datetime ON appointments(appointment_date, appointment_time);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS verification_codes (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        email VARCHAR(128) NOT NULL,
+        code VARCHAR(6) NOT NULL,
+        purpose VARCHAR(32) NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        used BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_verification_user ON verification_codes(user_id);
+      CREATE INDEX IF NOT EXISTS idx_verification_code ON verification_codes(code);
     `);
 
     await client.query('COMMIT');

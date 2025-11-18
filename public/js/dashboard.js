@@ -49,6 +49,17 @@ const myAppointmentsPanel = document.getElementById('myAppointmentsPanel');
 const bookAppointmentLink = document.getElementById('bookAppointmentLink');
 const myAppointmentsLink = document.getElementById('myAppointmentsLink');
 
+// Friendly date formatter (avoids TZ shifts on YYYY-MM-DD)
+function formatDate(value) {
+  const opts = { year: 'numeric', month: 'short', day: 'numeric' };
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, d] = value.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString(undefined, opts);
+  }
+  const dt = new Date(value);
+  return isNaN(dt) ? value : dt.toLocaleDateString(undefined, opts);
+}
+
 function showBookAppointment() {
   bookAppointmentPanel.style.display = 'block';
   myAppointmentsPanel.style.display = 'none';
@@ -75,8 +86,12 @@ if (myAppointmentsLink) {
   });
 }
 
-// Default view: My Appointments
-showMyAppointments();
+// Default view based on hash: #book to open booking panel
+if (window.location.hash === '#book') {
+  showBookAppointment();
+} else {
+  showMyAppointments();
+}
 
 // Logout functionality
 document.getElementById('logoutBtn').addEventListener('click', (e) => {
@@ -187,20 +202,18 @@ document.getElementById('appointmentForm').addEventListener('submit', async (e) 
     const data = await response.json();
 
     if (response.ok) {
-      const messageDiv = document.getElementById('message');
-      messageDiv.innerHTML = '<div class="alert alert-success">Appointment booked successfully!</div>';
+      showToast('Appointment booked successfully!', 'success');
       document.getElementById('appointmentForm').reset();
       loadAppointments();
       // Switch to My Appointments view after booking
       setTimeout(() => {
         showMyAppointments();
-        messageDiv.innerHTML = '';
       }, 2000);
     } else {
-      messageDiv.innerHTML = `<div class="alert alert-error">${data.error}</div>`;
+      showToast(data.error || 'Failed to book appointment.', 'error');
     }
   } catch (error) {
-    messageDiv.innerHTML = '<div class="alert alert-error">Failed to book appointment.</div>';
+    showToast('Failed to book appointment.', 'error');
     console.error('Error:', error);
   }
 });
@@ -227,7 +240,7 @@ async function loadAppointments() {
         html += `
           <tr>
             <td>${apt.document_type}</td>
-            <td>${apt.appointment_date}</td>
+            <td>${formatDate(apt.appointment_date)}</td>
             <td>${apt.appointment_time}</td>
             <td><span class="status status-${apt.status}">${apt.status.toUpperCase()}</span></td>
             <td>${apt.notes || '-'}</td>

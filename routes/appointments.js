@@ -60,7 +60,7 @@ router.post('/', verifyToken, async (req, res) => {
     
     // Get user details and send confirmation email
     const { rows: userRows } = await client.query(
-      `SELECT full_name, email FROM users WHERE id = $1`,
+      `SELECT first_name, last_name, middle_name, email FROM users WHERE id = $1`,
       [user_id]
     );
     const user = userRows[0];
@@ -72,7 +72,8 @@ router.post('/', verifyToken, async (req, res) => {
         appointment_date,
         appointment_time
       };
-      sendAppointmentConfirmation(user.email, user.full_name, appointmentData).catch(err =>
+      const displayName = `${user.first_name} ${user.last_name}${user.middle_name ? ' ' + user.middle_name.charAt(0).toUpperCase() + '.' : ''}`;
+      sendAppointmentConfirmation(user.email, displayName, appointmentData).catch(err =>
         console.error('Failed to send appointment confirmation:', err.message)
       );
     }
@@ -106,7 +107,7 @@ router.get('/all', verifyToken, async (req, res) => {
   }
   try {
     const { rows } = await pool.query(
-      `SELECT a.*, u.full_name, u.phone, u.email
+      `SELECT a.*, u.first_name, u.last_name, u.middle_name, u.phone, u.email
        FROM appointments a
        JOIN users u ON a.user_id = u.id
        ORDER BY a.appointment_date DESC, a.appointment_time DESC`
@@ -127,7 +128,7 @@ router.put('/:id/status', verifyToken, async (req, res) => {
   try {
     // Get current appointment with user details
     const { rows: currentRows } = await pool.query(
-      `SELECT a.*, u.email, u.full_name 
+      `SELECT a.*, u.email, u.first_name, u.last_name, u.middle_name 
        FROM appointments a 
        JOIN users u ON a.user_id = u.id 
        WHERE a.id = $1`,
@@ -150,6 +151,9 @@ router.put('/:id/status', verifyToken, async (req, res) => {
     if (result.rowCount === 0) return res.status(404).json({ error: 'Appointment not found' });
     
     // Send email notification if status changed
+    if (!currentAppointment.email) {
+      console.log(`No email on file for user of appointment ${id}; skipping status email`);
+    }
     if (currentAppointment.email && oldStatus !== status) {
       const appointmentData = {
         document_type: currentAppointment.document_type,
@@ -157,9 +161,11 @@ router.put('/:id/status', verifyToken, async (req, res) => {
         appointment_time: currentAppointment.appointment_time,
         notes: notes
       };
+      console.log(`Sending status update email for appointment ${id}: ${oldStatus} -> ${status} to ${currentAppointment.email}`);
+      const nameForStatus = `${currentAppointment.first_name} ${currentAppointment.last_name}${currentAppointment.middle_name ? ' ' + currentAppointment.middle_name.charAt(0).toUpperCase() + '.' : ''}`;
       sendStatusUpdate(
         currentAppointment.email,
-        currentAppointment.full_name,
+        nameForStatus,
         appointmentData,
         oldStatus,
         status

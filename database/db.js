@@ -38,7 +38,9 @@ async function createSchema() {
         id SERIAL PRIMARY KEY,
         username VARCHAR(64) UNIQUE NOT NULL,
         password TEXT NOT NULL,
-        full_name VARCHAR(128) NOT NULL,
+        first_name VARCHAR(64) NOT NULL,
+        last_name VARCHAR(64) NOT NULL,
+        middle_name VARCHAR(64),
         email VARCHAR(128),
         phone VARCHAR(32),
         address TEXT,
@@ -50,19 +52,6 @@ async function createSchema() {
       CREATE INDEX IF NOT EXISTS idx_users_approved ON users(approved);
     `);
 
-    // Add approved column to existing users table if it doesn't exist
-    await client.query(`
-      DO $$ 
-      BEGIN 
-        IF NOT EXISTS (
-          SELECT 1 FROM information_schema.columns 
-          WHERE table_name = 'users' AND column_name = 'approved'
-        ) THEN
-          ALTER TABLE users ADD COLUMN approved BOOLEAN NOT NULL DEFAULT FALSE;
-          CREATE INDEX IF NOT EXISTS idx_users_approved ON users(approved);
-        END IF;
-      END $$;
-    `);
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS time_slots (
@@ -121,37 +110,39 @@ async function seedDefaults() {
   // Create default admin (always approved)
   const hash = bcrypt.hashSync('admin123', 10);
   await pool.query(
-    `INSERT INTO users (username, password, full_name, role, approved)
-     VALUES ($1,$2,$3,$4,$5)
+    `INSERT INTO users (username, password, first_name, last_name, middle_name, role, approved)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)
      ON CONFLICT (username) DO UPDATE SET approved = TRUE`,
-    ['admin', hash, 'Administrator', 'admin', true]
+    ['admin', hash, 'Administrator', 'Admin', null, 'admin', true]
   );
 
-  // Generate time slots for next 30 days if not present
-  const times = ['09:00:00','10:00:00','11:00:00','13:00:00','14:00:00','15:00:00','16:00:00'];
-  const start = new Date();
-
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    for (let i = 1; i <= 30; i++) {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      const dateStr = d.toISOString().slice(0,10);
-      for (const t of times) {
-        await client.query(
-          `INSERT INTO time_slots (date, time) VALUES ($1,$2)
-           ON CONFLICT (date, time) DO NOTHING`,
-          [dateStr, t]
-        );
+  // Generate time slots for next 30 days only if not present
+  const { rows: slotCheck } = await pool.query('SELECT COUNT(*) FROM time_slots');
+  if (parseInt(slotCheck[0].count, 10) === 0) {
+    const times = ['09:00:00','10:00:00','11:00:00','13:00:00','14:00:00','15:00:00','16:00:00'];
+    const start = new Date();
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (let i = 1; i <= 30; i++) {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        const dateStr = d.toISOString().slice(0,10);
+        for (const t of times) {
+          await client.query(
+            `INSERT INTO time_slots (date, time) VALUES ($1,$2)
+             ON CONFLICT (date, time) DO NOTHING`,
+            [dateStr, t]
+          );
+        }
       }
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
     }
-    await client.query('COMMIT');
-  } catch (e) {
-    await client.query('ROLLBACK');
-    throw e;
-  } finally {
-    client.release();
   }
 }
 

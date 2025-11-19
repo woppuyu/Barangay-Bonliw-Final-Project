@@ -206,6 +206,8 @@ Final Project/
 - Passwords are hashed with bcrypt
 - Role-based access control (resident/admin)
 
+Note: Users now store split name fields: `first_name`, `last_name`, and optional `middle_name` (displayed as middle initial). Legacy `full_name` is no longer used.
+
 ### Time Slots Table
 - Available appointment time slots
 - Auto-generated for 30 days ahead
@@ -293,6 +295,38 @@ pg_dump -U postgres -h localhost -F c -d barangay_db -f barangay_backup.dump
 # Restore backup
 pg_restore -U postgres -h localhost -d barangay_db barangay_backup.dump
 ```
+
+### Migrating From `full_name` To Split Fields
+
+If your existing `users` table still has a legacy `full_name` column and lacks split name columns, run this one-time migration in psql:
+
+```sql
+-- Add new columns if they don't exist
+ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS middle_name TEXT;
+
+-- Naive backfill by splitting on spaces (adjust as needed)
+UPDATE users SET 
+   first_name = COALESCE(first_name, split_part(full_name, ' ', 1)),
+   last_name = COALESCE(last_name, NULLIF(split_part(full_name, ' ', array_length(regexp_split_to_array(full_name, '\\s+'), 1)), '')),
+   middle_name = COALESCE(middle_name, NULLIF(
+      CASE 
+         WHEN array_length(regexp_split_to_array(full_name, '\\s+'), 1) > 2 
+         THEN (array_to_string(
+                     (regexp_split_to_array(full_name, '\\s+'))[2:array_length(regexp_split_to_array(full_name, '\\s+'),1)-1],
+                     ' '
+                  ))
+         ELSE NULL
+      END,
+      ''
+   ));
+
+-- Optional: keep full_name for reference or drop it once validated
+-- ALTER TABLE users DROP COLUMN full_name;
+```
+
+New code paths expect `first_name` and `last_name` at minimum; `middle_name` is optional and displayed as an initial when present.
 
 ## 🚀 Deployment Notes
 

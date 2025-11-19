@@ -21,13 +21,81 @@ if (user.role === 'resident') {
 }
 
 // Display user info
-document.getElementById('userInfo').textContent = `Welcome, ${user.full_name}`;
-document.getElementById('sidebarUserName').textContent = user.full_name;
+function formatUserName(user) {
+  const mi = user.middle_name ? user.middle_name.charAt(0).toUpperCase() + '.' : '';
+  return `${user.first_name} ${user.last_name}${mi ? ' ' + mi : ''}`;
+}
+document.getElementById('userInfo').textContent = `Welcome, ${formatUserName(user)}`;
+document.getElementById('sidebarUserName').textContent = formatUserName(user);
 
 // Burger menu toggle (define first)
 const burgerToggle = document.getElementById('burgerToggle');
 const sidebarNav = document.getElementById('sidebarNav');
 const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+// Notification Bell Logic
+const notifBell = document.getElementById('notifBell');
+const notifDropdown = document.getElementById('notifDropdown');
+const notifCount = document.getElementById('notifCount');
+
+let notifications = [];
+
+function renderNotifications() {
+  if (!notifDropdown) return;
+  notifDropdown.innerHTML = '';
+  if (notifications.length === 0) {
+    notifDropdown.innerHTML = '<div class="notif-empty">No notifications</div>';
+    notifCount.style.display = 'none';
+  } else {
+    notifications.forEach((notif, idx) => {
+      const item = document.createElement('div');
+      item.className = 'notif-item';
+      item.textContent = notif.text;
+      notifDropdown.appendChild(item);
+    });
+    notifCount.textContent = notifications.length;
+    notifCount.style.display = 'inline-block';
+  }
+}
+
+function toggleNotifDropdown() {
+  if (!notifDropdown) return;
+  notifDropdown.style.display = notifDropdown.style.display === 'none' ? 'block' : 'none';
+}
+
+if (notifBell) {
+  notifBell.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleNotifDropdown();
+  });
+  document.addEventListener('click', (e) => {
+    if (notifDropdown && notifDropdown.style.display === 'block') {
+      notifDropdown.style.display = 'none';
+    }
+  });
+}
+
+// Fetch notifications from backend
+async function fetchNotifications() {
+  try {
+    const response = await fetch('/api/notifications', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    if (response.ok) {
+      notifications = await response.json();
+    } else {
+      notifications = [];
+    }
+  } catch (err) {
+    notifications = [];
+  }
+  renderNotifications();
+}
+
+// Initial fetch
+fetchNotifications();
 
 function openSidebar() {
   burgerToggle.classList.add('active');
@@ -62,6 +130,36 @@ const bookAppointmentPanel = document.getElementById('bookAppointmentPanel');
 const myAppointmentsPanel = document.getElementById('myAppointmentsPanel');
 const bookAppointmentLink = document.getElementById('bookAppointmentLink');
 const myAppointmentsLink = document.getElementById('myAppointmentsLink');
+// --- Appointment Date/Time Restrictions ---
+const appointmentDateInput = document.getElementById('appointment_date');
+const appointmentTimeSelect = document.getElementById('appointment_time');
+
+function getMinBookingDateTime() {
+  const now = new Date();
+  // Add 24 hours
+  now.setHours(now.getHours() + 24);
+  // Round up to next hour
+  if (now.getMinutes() > 0 || now.getSeconds() > 0 || now.getMilliseconds() > 0) {
+    now.setHours(now.getHours() + 1, 0, 0, 0);
+  } else {
+    now.setMinutes(0, 0, 0);
+  }
+  return now;
+}
+
+function formatDateYYYYMMDD(date) {
+  return date.toISOString().split('T')[0];
+}
+
+// Set min date on load
+if (appointmentDateInput) {
+  const minDate = getMinBookingDateTime();
+  appointmentDateInput.min = formatDateYYYYMMDD(minDate);
+}
+
+// --- Prepare for 12/24 hour toggle (placeholder) ---
+// TODO: Add UI for toggling between 12/24 hour clock
+// let use24HourClock = true; // For future implementation
 
 // Friendly date formatter (avoids TZ shifts on YYYY-MM-DD)
 function formatDate(value) {
@@ -116,36 +214,36 @@ document.getElementById('logoutBtn').addEventListener('click', (e) => {
 });
 
 // Load available time slots when date is selected
-document.getElementById('appointment_date').addEventListener('change', async (e) => {
+appointmentDateInput.addEventListener('change', async (e) => {
   const date = e.target.value;
-  const timeSelect = document.getElementById('appointment_time');
-  
-  timeSelect.innerHTML = '<option value="">Loading...</option>';
+  appointmentTimeSelect.innerHTML = '<option value="">Loading...</option>';
 
-  try {
-    const response = await fetch(`/api/appointments/time-slots?date=${date}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
+  // Only allow times between 08:00 and 17:00
+  // If selected date is minDate, restrict times to those >= min hour
+  let minHour = 8;
+  let maxHour = 17;
+  let allowedTimes = [];
 
-    const slots = await response.json();
-
-    if (slots.length === 0) {
-      timeSelect.innerHTML = '<option value="">No available slots</option>';
-    } else {
-      timeSelect.innerHTML = '<option value="">Select Time</option>';
-      slots.forEach(slot => {
-        const option = document.createElement('option');
-        option.value = slot.time;
-        option.textContent = slot.time;
-        timeSelect.appendChild(option);
-      });
-    }
-  } catch (error) {
-    console.error('Error loading time slots:', error);
-    timeSelect.innerHTML = '<option value="">Error loading slots</option>';
+  // If selected date is the min date, restrict times to those after minDate's hour
+  const minDate = getMinBookingDateTime();
+  const selectedDate = new Date(date + 'T00:00:00');
+  if (formatDateYYYYMMDD(selectedDate) === formatDateYYYYMMDD(minDate)) {
+    minHour = Math.max(minHour, minDate.getHours());
   }
+
+  for (let hour = minHour; hour <= maxHour; hour++) {
+    allowedTimes.push((hour < 10 ? '0' : '') + hour + ':00');
+  }
+
+  // Simulate fetching available slots (replace with backend filtering if needed)
+  // For now, just show allowed times
+  appointmentTimeSelect.innerHTML = '<option value="">Select Time</option>';
+  allowedTimes.forEach(time => {
+    const option = document.createElement('option');
+    option.value = time;
+    option.textContent = time; // TODO: Format for 12/24 hour toggle
+    appointmentTimeSelect.appendChild(option);
+  });
 });
 
 // Form validation helper

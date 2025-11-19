@@ -21,8 +21,12 @@ if (user.role === 'resident') {
 }
 
 // Display user info
-document.getElementById('userInfo').textContent = `Welcome, ${user.full_name}`;
-document.getElementById('sidebarUserName').textContent = user.full_name;
+function formatUserName(user) {
+  const mi = user.middle_name ? user.middle_name.charAt(0).toUpperCase() + '.' : '';
+  return `${user.first_name} ${user.last_name}${mi ? ' ' + mi : ''}`;
+}
+document.getElementById('userInfo').textContent = `Welcome, ${formatUserName(user)}`;
+document.getElementById('sidebarUserName').textContent = formatUserName(user);
 
 // Set role text
 const isAdmin = user.role === 'admin';
@@ -33,6 +37,7 @@ const sidebarMenu = document.getElementById('sidebarMenu');
 if (isAdmin) {
   sidebarMenu.innerHTML = `
     <li><a href="/admin">Manage Appointments</a></li>
+    <li><a href="/manage-users">Manage Users</a></li>
     <li><a href="/settings">Settings</a></li>
     <li><button id="logoutBtn" class="logout">Logout</button></li>
   `;
@@ -92,7 +97,9 @@ async function loadUserData() {
       const userData = await response.json();
       
       // Populate basic info form
-      document.getElementById('full_name').value = userData.full_name || '';
+      document.getElementById('first_name').value = userData.first_name || '';
+      document.getElementById('last_name').value = userData.last_name || '';
+      document.getElementById('middle_name').value = userData.middle_name || '';
       document.getElementById('phone').value = userData.phone || '';
       document.getElementById('address').value = userData.address || '';
       
@@ -114,7 +121,9 @@ document.getElementById('basicInfoForm').addEventListener('submit', async (e) =>
   if (messageDiv) messageDiv.innerHTML = '';
 
   const formData = {
-    full_name: document.getElementById('full_name').value,
+    first_name: document.getElementById('first_name').value,
+    last_name: document.getElementById('last_name').value,
+    middle_name: document.getElementById('middle_name').value,
     phone: document.getElementById('phone').value,
     address: document.getElementById('address').value
   };
@@ -133,11 +142,13 @@ document.getElementById('basicInfoForm').addEventListener('submit', async (e) =>
 
     if (response.ok) {
       // Update localStorage
-      user.full_name = formData.full_name;
+      user.first_name = formData.first_name;
+      user.last_name = formData.last_name;
+      user.middle_name = formData.middle_name;
       localStorage.setItem('user', JSON.stringify(user));
       showToast('✅ Profile updated successfully!', 'success');
-      document.getElementById('userInfo').textContent = `Welcome, ${formData.full_name}`;
-      document.getElementById('sidebarUserName').textContent = formData.full_name;
+      document.getElementById('userInfo').textContent = `Welcome, ${formatUserName(formData)}`;
+      document.getElementById('sidebarUserName').textContent = formatUserName(formData);
     } else {
       showToast(data.error || 'Update failed', 'error');
     }
@@ -147,45 +158,44 @@ document.getElementById('basicInfoForm').addEventListener('submit', async (e) =>
 });
 
 // Change username
-document.getElementById('usernameForm').addEventListener('submit', async (e) => {
+document.getElementById('usernameForm').addEventListener('submit', (e) => {
   e.preventDefault();
   const messageDiv = document.getElementById('message');
   if (messageDiv) messageDiv.innerHTML = '';
 
   const newUsername = document.getElementById('new_username').value;
 
-  const confirmed = await showConfirmModal(
+  showConfirmModal(
     'Change Username',
-    `Are you sure you want to change your username to "${newUsername}"?`
-  );
+    `Are you sure you want to change your username to "${newUsername}"?`,
+    async () => {
+      try {
+        const response = await fetch('/api/auth/update-username', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ new_username: newUsername })
+        });
 
-  if (!confirmed) return;
+        const data = await response.json();
 
-  try {
-    const response = await fetch('/api/auth/update-username', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ new_username: newUsername })
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      user.username = newUsername;
-      localStorage.setItem('user', JSON.stringify(user));
-      
-      document.getElementById('current_username').value = newUsername;
-      document.getElementById('new_username').value = '';
-      showToast('✅ Username changed successfully!', 'success');
-    } else {
-      showToast(data.error || 'Username change failed', 'error');
+        if (response.ok) {
+          user.username = newUsername;
+          localStorage.setItem('user', JSON.stringify(user));
+          
+          document.getElementById('current_username').value = newUsername;
+          document.getElementById('new_username').value = '';
+          showToast('✅ Username changed successfully!', 'success');
+        } else {
+          showToast(data.error || 'Username change failed', 'error');
+        }
+      } catch (error) {
+        showToast('An error occurred. Please try again.', 'error');
+      }
     }
-  } catch (error) {
-    showToast('An error occurred. Please try again.', 'error');
-  }
+  );
 });
 
 // Send verification code for email change
@@ -316,6 +326,70 @@ document.getElementById('passwordForm').addEventListener('submit', async (e) => 
     showToast('An error occurred. Please try again.', 'error');
   }
 });
+
+// --- Notification Bell Logic ---
+const notifBell = document.getElementById('notifBell');
+const notifDropdown = document.getElementById('notifDropdown');
+const notifCount = document.getElementById('notifCount');
+
+let notifications = [];
+
+function renderNotifications() {
+  if (!notifDropdown) return;
+  notifDropdown.innerHTML = '';
+  if (notifications.length === 0) {
+    notifDropdown.innerHTML = '<div class="notif-empty">No notifications</div>';
+    notifCount.style.display = 'none';
+  } else {
+    notifications.forEach((notif, idx) => {
+      const item = document.createElement('div');
+      item.className = 'notif-item';
+      item.textContent = notif.text;
+      notifDropdown.appendChild(item);
+    });
+    notifCount.textContent = notifications.length;
+    notifCount.style.display = 'inline-block';
+  }
+}
+
+function toggleNotifDropdown() {
+  if (!notifDropdown) return;
+  notifDropdown.style.display = notifDropdown.style.display === 'none' ? 'block' : 'none';
+}
+
+if (notifBell) {
+  notifBell.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleNotifDropdown();
+  });
+  document.addEventListener('click', (e) => {
+    if (notifDropdown && notifDropdown.style.display === 'block') {
+      notifDropdown.style.display = 'none';
+    }
+  });
+}
+
+// Fetch notifications from backend
+async function fetchNotifications() {
+  try {
+    const response = await fetch('/api/notifications', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    if (response.ok) {
+      notifications = await response.json();
+    } else {
+      notifications = [];
+    }
+  } catch (err) {
+    notifications = [];
+  }
+  renderNotifications();
+}
+
+// Initial fetch
+fetchNotifications();
 
 // Load user data on page load
 loadUserData();

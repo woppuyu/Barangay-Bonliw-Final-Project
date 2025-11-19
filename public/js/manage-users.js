@@ -11,8 +11,12 @@ if (user.role !== 'admin') {
 }
 
 // Display user info
-document.getElementById('userInfo').textContent = `Welcome, ${user.full_name}`;
-document.getElementById('sidebarUserName').textContent = user.full_name;
+function formatUserName(u) {
+  const mi = u.middle_name ? u.middle_name.charAt(0).toUpperCase() + '.' : '';
+  return `${u.first_name} ${u.last_name}${mi ? ' ' + mi : ''}`;
+}
+document.getElementById('userInfo').textContent = `Welcome, ${formatUserName(user)}`;
+document.getElementById('sidebarUserName').textContent = formatUserName(user);
 
 // Burger menu toggle
 const burgerToggle = document.getElementById('burgerToggle');
@@ -136,7 +140,7 @@ function renderUsers() {
     html += `<tr>`;
     html += `<td><span class="status ${statusClass}">${statusText}</span></td>`;
     html += `<td>${u.username}</td>`;
-    html += `<td>${u.full_name}</td>`;
+    html += `<td>${formatUserName(u)}</td>`;
     html += `<td>${u.email || '-'}</td>`;
     html += `<td>${u.phone || '-'}</td>`;
     html += `<td>${u.address || '-'}</td>`;
@@ -170,65 +174,55 @@ document.querySelectorAll('.filter-tab').forEach(tab => {
 });
 
 // Approve user
-async function approveUser(userId) {
-  const confirmed = await showConfirmModal(
+function approveUser(userId) {
+  showConfirmModal(
     'Approve User',
-    'Are you sure you want to approve this user? They will gain access to all features.'
-  );
-
-  if (!confirmed) return;
-
-  try {
-    const response = await fetch(`/api/auth/users/${userId}/approve`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`
+    'Are you sure you want to approve this user? They will gain access to all features.',
+    async () => {
+      try {
+        const response = await fetch(`/api/auth/users/${userId}/approve`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (response.ok) {
+          showToast('User approved successfully!', 'success');
+          loadUsers();
+        } else {
+          showToast(data.error || 'Failed to approve user', 'error');
+        }
+      } catch (error) {
+        showToast('Failed to approve user', 'error');
+        console.error('Error:', error);
       }
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      showToast('User approved successfully!', 'success');
-      loadUsers();
-    } else {
-      showToast(data.error || 'Failed to approve user', 'error');
     }
-  } catch (error) {
-    showToast('Failed to approve user', 'error');
-    console.error('Error:', error);
-  }
+  );
 }
 
 // Revoke approval
-async function revokeUser(userId) {
-  const confirmed = await showConfirmModal(
+function revokeUser(userId) {
+  showConfirmModal(
     'Revoke Approval',
-    'Are you sure you want to revoke this user\'s approval? They will lose access to features.'
-  );
-
-  if (!confirmed) return;
-
-  try {
-    const response = await fetch(`/api/auth/users/${userId}/revoke`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`
+    'Are you sure you want to revoke this user\'s approval? They will lose access to features.',
+    async () => {
+      try {
+        const response = await fetch(`/api/auth/users/${userId}/revoke`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (response.ok) {
+          showToast('User approval revoked', 'success');
+          loadUsers();
+        } else {
+          showToast(data.error || 'Failed to revoke approval', 'error');
+        }
+      } catch (error) {
+        showToast('Failed to revoke approval', 'error');
+        console.error('Error:', error);
       }
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      showToast('User approval revoked', 'success');
-      loadUsers();
-    } else {
-      showToast(data.error || 'Failed to revoke approval', 'error');
     }
-  } catch (error) {
-    showToast('Failed to revoke approval', 'error');
-    console.error('Error:', error);
-  }
+  );
 }
 
 // Open edit modal
@@ -237,7 +231,9 @@ function openEditModal(userId) {
   if (!user) return;
 
   document.getElementById('editUserId').value = user.id;
-  document.getElementById('editFullName').value = user.full_name;
+  document.getElementById('editFirstName').value = user.first_name || '';
+  document.getElementById('editLastName').value = user.last_name || '';
+  document.getElementById('editMiddleName').value = user.middle_name || '';
   document.getElementById('editEmail').value = user.email || '';
   document.getElementById('editPhone').value = user.phone || '';
   document.getElementById('editAddress').value = user.address || '';
@@ -258,7 +254,9 @@ document.getElementById('editUserForm').addEventListener('submit', async (e) => 
 
   const userId = document.getElementById('editUserId').value;
   const formData = {
-    full_name: document.getElementById('editFullName').value,
+    first_name: document.getElementById('editFirstName').value,
+    last_name: document.getElementById('editLastName').value,
+    middle_name: document.getElementById('editMiddleName').value,
     email: document.getElementById('editEmail').value,
     phone: document.getElementById('editPhone').value,
     address: document.getElementById('editAddress').value
@@ -291,35 +289,94 @@ document.getElementById('editUserForm').addEventListener('submit', async (e) => 
 });
 
 // Delete user
-async function deleteUser(userId, username) {
-  const confirmed = await showConfirmModal(
+function deleteUser(userId, username) {
+  showConfirmModal(
     'Delete User',
-    `Are you sure you want to permanently delete user "${username}"? This action cannot be undone and will also delete all their appointments.`
+    `Are you sure you want to permanently delete user "${username}"? This action cannot be undone and will also delete all their appointments.`,
+    async () => {
+      try {
+        const response = await fetch(`/api/auth/users/${userId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (response.ok) {
+          showToast('User deleted successfully', 'success');
+          loadUsers();
+        } else {
+          showToast(data.error || 'Failed to delete user', 'error');
+        }
+      } catch (error) {
+        showToast('Failed to delete user', 'error');
+        console.error('Error:', error);
+      }
+    }
   );
+}
 
-  if (!confirmed) return;
+// --- Notification Bell Logic ---
+const notifBell = document.getElementById('notifBell');
+const notifDropdown = document.getElementById('notifDropdown');
+const notifCount = document.getElementById('notifCount');
 
+let notifications = [];
+
+function renderNotifications() {
+  if (!notifDropdown) return;
+  notifDropdown.innerHTML = '';
+  if (notifications.length === 0) {
+    notifDropdown.innerHTML = '<div class="notif-empty">No notifications</div>';
+    notifCount.style.display = 'none';
+  } else {
+    notifications.forEach((notif, idx) => {
+      const item = document.createElement('div');
+      item.className = 'notif-item';
+      item.textContent = notif.text;
+      notifDropdown.appendChild(item);
+    });
+    notifCount.textContent = notifications.length;
+    notifCount.style.display = 'inline-block';
+  }
+}
+
+function toggleNotifDropdown() {
+  if (!notifDropdown) return;
+  notifDropdown.style.display = notifDropdown.style.display === 'none' ? 'block' : 'none';
+}
+
+if (notifBell) {
+  notifBell.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleNotifDropdown();
+  });
+  document.addEventListener('click', (e) => {
+    if (notifDropdown && notifDropdown.style.display === 'block') {
+      notifDropdown.style.display = 'none';
+    }
+  });
+}
+
+// Fetch notifications from backend
+async function fetchNotifications() {
   try {
-    const response = await fetch(`/api/auth/users/${userId}`, {
-      method: 'DELETE',
+    const response = await fetch('/api/notifications', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     });
-
-    const data = await response.json();
-
     if (response.ok) {
-      showToast('User deleted successfully', 'success');
-      loadUsers();
+      notifications = await response.json();
     } else {
-      showToast(data.error || 'Failed to delete user', 'error');
+      notifications = [];
     }
-  } catch (error) {
-    showToast('Failed to delete user', 'error');
-    console.error('Error:', error);
+  } catch (err) {
+    notifications = [];
   }
+  renderNotifications();
 }
+
+// Initial fetch
+fetchNotifications();
 
 // Load users on page load
 loadUsers();

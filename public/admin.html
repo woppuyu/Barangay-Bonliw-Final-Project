@@ -17,7 +17,16 @@
         </button>
         <h1>Barangay Bonliw - Admin</h1>
       </div>
-      <div class="user-info" id="userInfo"></div>
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <div class="notification-area">
+          <button id="notifBell" class="notif-bell" aria-label="Notifications">
+            <span class="bell-icon"></span>
+            <span id="notifCount" class="notif-count" style="display:none;">0</span>
+          </button>
+          <div id="notifDropdown" class="notif-dropdown" style="display:none;"></div>
+        </div>
+        <div class="user-info" id="userInfo"></div>
+      </div>
     </div>
   </header>
 

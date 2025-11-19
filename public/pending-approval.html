@@ -97,8 +97,12 @@
     }
 
     // Display user info in header
-    document.getElementById('userInfo').textContent = `Welcome, ${user.full_name}`;
-    document.getElementById('sidebarUserName').textContent = user.full_name;
+    function formatUserName(u) {
+      const mi = u.middle_name ? u.middle_name.charAt(0).toUpperCase() + '.' : '';
+      return `${u.first_name} ${u.last_name}${mi ? ' ' + mi : ''}`;
+    }
+    document.getElementById('userInfo').textContent = `Welcome, ${formatUserName(user)}`;
+    document.getElementById('sidebarUserName').textContent = formatUserName(user);
 
     // Burger menu toggle
     const burgerToggle = document.getElementById('burgerToggle');
@@ -148,7 +152,8 @@
           
           // Display user details
           document.getElementById('displayUsername').textContent = userData.username || '-';
-          document.getElementById('displayFullName').textContent = userData.full_name || '-';
+          const mi = userData.middle_name ? userData.middle_name.charAt(0).toUpperCase() + '.' : '';
+          document.getElementById('displayFullName').textContent = `${userData.first_name} ${userData.last_name}${mi ? ' ' + mi : ''}`;
           document.getElementById('displayEmail').textContent = userData.email || 'Not provided';
           document.getElementById('displayPhone').textContent = userData.phone || 'Not provided';
           

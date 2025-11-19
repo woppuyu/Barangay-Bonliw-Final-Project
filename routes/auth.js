@@ -14,10 +14,11 @@ function generateVerificationCode() {
 }
 
 // Register
-router.post('/register', async (req, res) => {
-  const { username, password, full_name, email, phone, address } = req.body;
 
-  if (!username || !password || !full_name) {
+router.post('/register', async (req, res) => {
+  const { username, password, first_name, last_name, middle_name, email, phone, address } = req.body;
+
+  if (!username || !password || !first_name || !last_name) {
     return res.status(400).json({ error: 'Please provide all required fields' });
   }
 
@@ -34,21 +35,15 @@ router.post('/register', async (req, res) => {
         return res.status(400).json({ error: 'Enter a valid PH phone number (+63 or 09)' });
       }
     }
+
     const hashedPassword = bcrypt.hashSync(password, 10);
     const result = await pool.query(
-      `INSERT INTO users (username, password, full_name, email, phone, address)
-       VALUES ($1,$2,$3,$4,$5,$6)
+      `INSERT INTO users (username, password, first_name, last_name, middle_name, email, phone, address)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
        RETURNING id`,
-      [username, hashedPassword, full_name, email, normalizedPhone, address]
+      [username, hashedPassword, first_name, last_name, middle_name, email, normalizedPhone, address]
     );
-    
-    // Send welcome email if email is provided
-    if (email) {
-      sendWelcomeEmail(email, full_name).catch(err => 
-        console.error('Failed to send welcome email:', err.message)
-      );
-    }
-    
+
     res.json({ message: 'Registration successful', userId: result.rows[0].id });
   } catch (err) {
     if (err.code === '23505') {
@@ -86,7 +81,9 @@ router.post('/login', async (req, res) => {
       user: {
         id: user.id,
         username: user.username,
-        full_name: user.full_name,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        middle_name: user.middle_name,
         role: user.role,
         approved: user.approved
       }
@@ -117,9 +114,9 @@ function isValidPHPhone(phone) {
 
 // Step 1: Initiate registration (for email verification flow)
 router.post('/register-initiate', async (req, res) => {
-  const { username, password, full_name, contact, address } = req.body;
+  const { username, password, first_name, last_name, middle_name, contact, address } = req.body;
 
-  if (!username || !password || !full_name || !contact) {
+  if (!username || !password || !first_name || !last_name || !contact) {
     return res.status(400).json({ error: 'Please provide all required fields' });
   }
 
@@ -129,26 +126,21 @@ router.post('/register-initiate', async (req, res) => {
 
   try {
     // Ensure username not taken
-    const existingUsername = await pool.query('SELECT 1 FROM users WHERE username = $1', [username]);
-    if (existingUsername.rowCount > 0) {
-      return res.status(400).json({ error: 'Username already exists' });
+    // Consolidated uniqueness check
+    const existing = await pool.query('SELECT 1 FROM users WHERE username = $1 OR email = $2', [username, contact]);
+    if (existing.rowCount > 0) {
+      return res.status(400).json({ error: 'Username or email already exists' });
     }
 
     if (isValidEmail(contact)) {
-      // Ensure email not taken
-      const existingEmail = await pool.query('SELECT 1 FROM users WHERE email = $1', [contact]);
-      if (existingEmail.rowCount > 0) {
-        return res.status(400).json({ error: 'Email already in use' });
-      }
-
       const code = generateVerificationCode();
       // Send email code
-      await sendVerificationCode(contact, full_name, code);
+      await sendVerificationCode(contact, `${first_name} ${last_name}${middle_name ? ' ' + middle_name.charAt(0).toUpperCase() + '.' : ''}`, code);
 
       // Build short-lived registration token including hashed password
       const passwordHash = bcrypt.hashSync(password, 10);
       const regToken = jwt.sign(
-        { step: 'registration', username, full_name, email: contact, phone: null, address: address || null, passwordHash, code },
+        { step: 'registration', username, first_name, last_name, middle_name, email: contact, phone: null, address: address || null, passwordHash, code },
         REG_TOKEN_SECRET,
         { expiresIn: '10m' }
       );
@@ -186,7 +178,7 @@ router.post('/register-complete', async (req, res) => {
     }
 
     // Create user (email-verified)
-    const { username, full_name, email, phone, address, passwordHash } = payload;
+    const { username, first_name, last_name, middle_name, email, phone, address, passwordHash } = payload;
 
     // Ensure username/email still available
     const existing = await pool.query('SELECT 1 FROM users WHERE username = $1 OR email = $2', [username, email]);
@@ -195,16 +187,11 @@ router.post('/register-complete', async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO users (username, password, full_name, email, phone, address)
-       VALUES ($1,$2,$3,$4,$5,$6)
+      `INSERT INTO users (username, password, first_name, last_name, middle_name, email, phone, address)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
        RETURNING id`,
-      [username, passwordHash, full_name, email, phone, address]
+      [username, passwordHash, first_name, last_name, middle_name, email, phone, address]
     );
-
-    // Welcome email already handled during normal register, but we can keep it optional here
-    if (email) {
-      sendWelcomeEmail(email, full_name).catch(() => {});
-    }
 
     return res.json({ message: 'Registration complete', userId: result.rows[0].id });
   } catch (err) {
@@ -234,11 +221,27 @@ function verifyToken(req, res, next) {
   });
 }
 
+// --- Auth middleware for notifications ---
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.sendStatus(401);
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
+    next();
+  });
+}
+
+module.exports = router;
+module.exports.verifyToken = verifyToken;
+module.exports.authenticateToken = authenticateToken;
+
 // Get current user data
 router.get('/me', verifyToken, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT id, username, full_name, email, phone, address, role, approved, created_at FROM users WHERE id = $1',
+      'SELECT id, username, first_name, last_name, middle_name, email, phone, address, role, approved, created_at FROM users WHERE id = $1',
       [req.userId]
     );
     if (rows.length === 0) {
@@ -252,10 +255,10 @@ router.get('/me', verifyToken, async (req, res) => {
 
 // Update basic profile (name, phone, address)
 router.put('/update-profile', verifyToken, async (req, res) => {
-  const { full_name, phone, address } = req.body;
+  const { first_name, last_name, middle_name, phone, address } = req.body;
   
-  if (!full_name) {
-    return res.status(400).json({ error: 'Full name is required' });
+  if (!first_name || !last_name) {
+    return res.status(400).json({ error: 'First and last name are required' });
   }
 
   try {
@@ -268,8 +271,8 @@ router.put('/update-profile', verifyToken, async (req, res) => {
       phoneValue = normalized;
     }
     await pool.query(
-      'UPDATE users SET full_name = $1, phone = $2, address = $3 WHERE id = $4',
-      [full_name, phoneValue, address || null, req.userId]
+      'UPDATE users SET first_name = $1, last_name = $2, middle_name = $3, phone = $4, address = $5 WHERE id = $6',
+      [first_name, last_name, middle_name, phoneValue, address || null, req.userId]
     );
     res.json({ message: 'Profile updated successfully' });
   } catch (err) {
@@ -327,12 +330,15 @@ router.post('/send-email-verification', verifyToken, async (req, res) => {
       [req.userId, new_email, code, 'email_change', expiresAt]
     );
 
-    // Get user's full name for email
-    const userResult = await pool.query('SELECT full_name FROM users WHERE id = $1', [req.userId]);
-    const fullName = userResult.rows[0]?.full_name || 'User';
+    // Get user's name for email
+    const userResult = await pool.query('SELECT first_name, last_name, middle_name FROM users WHERE id = $1', [req.userId]);
+    const u = userResult.rows[0] || {};
+    const displayName = u.first_name && u.last_name
+      ? `${u.first_name} ${u.last_name}${u.middle_name ? ' ' + u.middle_name.charAt(0).toUpperCase() + '.' : ''}`
+      : 'User';
 
     // Send verification code via email
-    await sendVerificationCode(new_email, fullName, code);
+    await sendVerificationCode(new_email, displayName, code);
 
     res.json({ message: 'Verification code sent to new email' });
   } catch (err) {
@@ -433,7 +439,7 @@ router.get('/users', verifyToken, async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT id, username, full_name, email, phone, address, role, approved, created_at 
+      `SELECT id, username, first_name, last_name, middle_name, email, phone, address, role, approved, created_at 
        FROM users 
        WHERE role = 'resident'
        ORDER BY approved ASC, created_at DESC`
@@ -453,23 +459,42 @@ router.put('/users/:id/approve', verifyToken, async (req, res) => {
   const userId = parseInt(req.params.id);
 
   try {
-    const result = await pool.query(
-      'UPDATE users SET approved = TRUE WHERE id = $1 AND role = $\'resident\' RETURNING *',
+    // Fetch current user state
+    const { rows } = await pool.query(
+      `SELECT id, username, first_name, last_name, middle_name, email, approved FROM users WHERE id = $1 AND role = 'resident'`,
       [userId]
     );
 
-    if (result.rowCount === 0) {
+    if (rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // TODO: Send approval email notification
-    const user = result.rows[0];
-    if (user.email) {
-      // You can add email notification here later
-      console.log(`User approved: ${user.username} (${user.email})`);
+    const userRow = rows[0];
+
+    if (userRow.approved) {
+      // Already approved; respond idempotently
+      return res.json({ message: 'User already approved', user: userRow });
     }
 
-    res.json({ message: 'User approved successfully', user: result.rows[0] });
+    // Approve the user
+    const result = await pool.query(
+      `UPDATE users SET approved = TRUE WHERE id = $1 RETURNING id, username, first_name, last_name, middle_name, email, approved`,
+      [userId]
+    );
+
+    const updated = result.rows[0];
+
+    // Send welcome email upon approval if email exists
+    if (updated.email) {
+      const welcomeName = updated.first_name && updated.last_name
+        ? `${updated.first_name} ${updated.last_name}${updated.middle_name ? ' ' + updated.middle_name.charAt(0).toUpperCase() + '.' : ''}`
+        : 'Resident';
+      sendWelcomeEmail(updated.email, welcomeName).catch(err =>
+        console.error('Failed to send welcome email:', err.message)
+      );
+    }
+
+    res.json({ message: 'User approved successfully', user: updated });
   } catch (err) {
     res.status(500).json({ error: 'Failed to approve user' });
   }
@@ -485,7 +510,7 @@ router.put('/users/:id/revoke', verifyToken, async (req, res) => {
 
   try {
     const result = await pool.query(
-      'UPDATE users SET approved = FALSE WHERE id = $1 AND role = $\'resident\' RETURNING *',
+      "UPDATE users SET approved = FALSE WHERE id = $1 AND role = 'resident' RETURNING *",
       [userId]
     );
 
@@ -506,10 +531,10 @@ router.put('/users/:id', verifyToken, async (req, res) => {
   }
 
   const userId = parseInt(req.params.id);
-  const { full_name, email, phone, address } = req.body;
+  const { first_name, last_name, middle_name, email, phone, address } = req.body;
 
-  if (!full_name) {
-    return res.status(400).json({ error: 'Full name is required' });
+  if (!first_name || !last_name) {
+    return res.status(400).json({ error: 'First and last name are required' });
   }
 
   try {
@@ -523,8 +548,8 @@ router.put('/users/:id', verifyToken, async (req, res) => {
     }
 
     const result = await pool.query(
-      'UPDATE users SET full_name = $1, email = $2, phone = $3, address = $4 WHERE id = $5 AND role = $\'resident\' RETURNING *',
-      [full_name, email || null, phoneValue, address || null, userId]
+      "UPDATE users SET first_name = $1, last_name = $2, middle_name = $3, email = $4, phone = $5, address = $6 WHERE id = $7 AND role = 'resident' RETURNING *",
+      [first_name, last_name, middle_name, email || null, phoneValue, address || null, userId]
     );
 
     if (result.rowCount === 0) {
@@ -547,7 +572,7 @@ router.delete('/users/:id', verifyToken, async (req, res) => {
 
   try {
     const result = await pool.query(
-      'DELETE FROM users WHERE id = $1 AND role = $\'resident\' RETURNING username',
+      "DELETE FROM users WHERE id = $1 AND role = 'resident' RETURNING username",
       [userId]
     );
 
@@ -560,6 +585,3 @@ router.delete('/users/:id', verifyToken, async (req, res) => {
     res.status(500).json({ error: 'Failed to delete user' });
   }
 });
-
-module.exports = router;
-module.exports.verifyToken = verifyToken;

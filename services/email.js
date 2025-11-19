@@ -11,6 +11,15 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+// Verify transporter on startup to surface config issues
+transporter.verify((err, success) => {
+  if (err) {
+    console.error('Email transporter verification failed:', err.message);
+  } else {
+    console.log('Email transporter is ready to send messages');
+  }
+});
+
 // Send welcome email after registration
 async function sendWelcomeEmail(to, fullName) {
   if (!to) return; // Skip if no email provided

@@ -6,6 +6,7 @@ const path = require('path');
 const db = require('./database/db');
 const authRoutes = require('./routes/auth');
 const appointmentRoutes = require('./routes/appointments');
+const notificationRoutes = require('./routes/notifications');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,6 +20,7 @@ app.use(express.static('public'));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/appointments', appointmentRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Serve HTML pages
 app.get('/', (req, res) => {

@@ -7,8 +7,12 @@ if (!token || !user || user.role !== 'admin') {
 }
 
 // Display user info
-document.getElementById('userInfo').textContent = `Admin: ${user.full_name}`;
-document.getElementById('sidebarUserName').textContent = user.full_name;
+function formatUserName(u) {
+  const mi = u.middle_name ? u.middle_name.charAt(0).toUpperCase() + '.' : '';
+  return `${u.first_name} ${u.last_name}${mi ? ' ' + mi : ''}`;
+}
+document.getElementById('userInfo').textContent = `Admin: ${formatUserName(user)}`;
+document.getElementById('sidebarUserName').textContent = formatUserName(user);
 
 // Burger menu toggle
 const burgerToggle = document.getElementById('burgerToggle');
@@ -86,7 +90,7 @@ async function loadAppointments() {
         
         html += `
           <tr>
-            <td>${apt.full_name}</td>
+            <td>${apt.first_name ? formatUserName(apt) : (apt.full_name || '-')}</td>
             <td>${apt.phone || apt.email || '-'}</td>
             <td>${apt.document_type}</td>
             <td>${apt.purpose || '-'}</td>
@@ -194,6 +198,70 @@ async function performDelete(id) {
     console.error('Error:', error);
   }
 }
+
+// --- Notification Bell Logic ---
+const notifBell = document.getElementById('notifBell');
+const notifDropdown = document.getElementById('notifDropdown');
+const notifCount = document.getElementById('notifCount');
+
+let notifications = [];
+
+function renderNotifications() {
+  if (!notifDropdown) return;
+  notifDropdown.innerHTML = '';
+  if (notifications.length === 0) {
+    notifDropdown.innerHTML = '<div class="notif-empty">No notifications</div>';
+    notifCount.style.display = 'none';
+  } else {
+    notifications.forEach((notif, idx) => {
+      const item = document.createElement('div');
+      item.className = 'notif-item';
+      item.textContent = notif.text;
+      notifDropdown.appendChild(item);
+    });
+    notifCount.textContent = notifications.length;
+    notifCount.style.display = 'inline-block';
+  }
+}
+
+function toggleNotifDropdown() {
+  if (!notifDropdown) return;
+  notifDropdown.style.display = notifDropdown.style.display === 'none' ? 'block' : 'none';
+}
+
+if (notifBell) {
+  notifBell.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleNotifDropdown();
+  });
+  document.addEventListener('click', (e) => {
+    if (notifDropdown && notifDropdown.style.display === 'block') {
+      notifDropdown.style.display = 'none';
+    }
+  });
+}
+
+// Fetch notifications from backend
+async function fetchNotifications() {
+  try {
+    const response = await fetch('/api/notifications', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    if (response.ok) {
+      notifications = await response.json();
+    } else {
+      notifications = [];
+    }
+  } catch (err) {
+    notifications = [];
+  }
+  renderNotifications();
+}
+
+// Initial fetch
+fetchNotifications();
 
 // Load appointments on page load
 loadAppointments();

@@ -50,9 +50,9 @@
           </div>
         </form>
 
-        <!-- Register (two-step with slide) -->
-        <div id="registerViewport" style="display:none; overflow:hidden;">
-          <div id="registerSteps" style="display:flex; width:200%; transition: transform 0.3s ease;">
+        <!-- Register (two-step, no slide) -->
+        <div id="registerViewport" style="display:none;">
+          <div id="registerSteps" style="display:block;">
             <!-- Step 1: Details -->
             <form id="registerForm" style="flex: 0 0 50%; padding-right: 8px;" novalidate>
               <div class="form-group">
@@ -69,9 +69,18 @@
                 <div class="field-error" id="error_reg_password"></div>
               </div>
               <div class="form-group">
-                <label for="reg_full_name">Full Name *</label>
-                <input type="text" id="reg_full_name" name="full_name" required autocomplete="name">
-                <div class="field-error" id="error_reg_full_name"></div>
+                <label for="reg_first_name">First Name *</label>
+                <input type="text" id="reg_first_name" name="first_name" required autocomplete="given-name">
+                <div class="field-error" id="error_reg_first_name"></div>
+              </div>
+              <div class="form-group">
+                <label for="reg_last_name">Last Name *</label>
+                <input type="text" id="reg_last_name" name="last_name" required autocomplete="family-name">
+                <div class="field-error" id="error_reg_last_name"></div>
+              </div>
+              <div class="form-group">
+                <label for="reg_middle_name">Middle Name</label>
+                <input type="text" id="reg_middle_name" name="middle_name" autocomplete="additional-name">
               </div>
               <div class="form-group">
                 <label for="reg_contact">Email/Phone Number</label>
@@ -92,7 +101,7 @@
             </form>
 
             <!-- Step 2: Email Verification -->
-            <form id="registerVerifyForm" style="flex: 0 0 50%; padding-left: 8px; display: none;">
+            <form id="registerVerifyForm" style="padding-left: 8px; display: none;">
               <p id="verifyHelp" style="margin-bottom: 16px; color:#4a5568; font-size: 14px;">Enter the 6-digit code sent to your email.</p>
               <div class="form-group">
                 <label for="reg_verification_code">Verification Code</label>
@@ -131,6 +140,7 @@
       const modalTitle = document.getElementById('authModalTitle');
       const messageDiv = document.getElementById('message');
       let regToken = null;
+      let pendingLogin = null;
       // Dynamic label update for contact field
       const regContactInput = document.getElementById('reg_contact');
       const regContactLabel = document.querySelector('label[for="reg_contact"]');
@@ -177,7 +187,6 @@
         registerViewport.style.display = 'block';
         registerForm.style.display = 'block';
         if (registerVerifyForm) registerVerifyForm.style.display = 'none';
-        if (registerSteps) registerSteps.style.transform = 'translateX(0)';
         modalTitle.textContent = 'Register Account';
         messageDiv.innerHTML = '';
         clearRegisterErrors();
@@ -283,7 +292,8 @@
       function clearRegisterErrors() {
         document.getElementById('error_reg_username').textContent = '';
         document.getElementById('error_reg_password').textContent = '';
-        document.getElementById('error_reg_full_name').textContent = '';
+        const efn = document.getElementById('error_reg_first_name'); if (efn) efn.textContent = '';
+        const eln = document.getElementById('error_reg_last_name'); if (eln) eln.textContent = '';
         const c = document.getElementById('error_reg_contact');
         if (c) c.textContent = '';
       }
@@ -301,7 +311,8 @@
 
         const username = document.getElementById('reg_username').value.trim();
         const password = document.getElementById('reg_password').value;
-        const fullName = document.getElementById('reg_full_name').value.trim();
+        const firstName = document.getElementById('reg_first_name').value.trim();
+        const lastName = document.getElementById('reg_last_name').value.trim();
         const contact = (document.getElementById('reg_contact')?.value || '').trim();
 
         if (!username) {
@@ -317,8 +328,13 @@
           isValid = false;
         }
 
-        if (!fullName) {
-          showRegisterError('full_name', 'Full name is required');
+        if (!firstName) {
+          showRegisterError('first_name', 'First name is required');
+          isValid = false;
+        }
+
+        if (!lastName) {
+          showRegisterError('last_name', 'Last name is required');
           isValid = false;
         }
 
@@ -347,7 +363,9 @@
         const formData = {
           username: document.getElementById('reg_username').value,
           password: document.getElementById('reg_password').value,
-          full_name: document.getElementById('reg_full_name').value,
+          first_name: document.getElementById('reg_first_name').value,
+          last_name: document.getElementById('reg_last_name').value,
+          middle_name: document.getElementById('reg_middle_name').value,
           contact: document.getElementById('reg_contact')?.value.trim(),
           address: document.getElementById('reg_address').value
         };
@@ -360,7 +378,7 @@
             const resp = await fetch('/api/auth/register-initiate', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ username: formData.username, password: formData.password, full_name: formData.full_name, contact: formData.contact, address: formData.address })
+              body: JSON.stringify({ username: formData.username, password: formData.password, first_name: formData.first_name, last_name: formData.last_name, middle_name: formData.middle_name, contact: formData.contact, address: formData.address })
             });
             const data = await resp.json();
             if (!resp.ok) {
@@ -368,19 +386,44 @@
               return;
             }
             regToken = data.regToken;
+            pendingLogin = { username: formData.username, password: formData.password };
             verifyHelp.textContent = `Enter the 6-digit code sent to ${formData.contact}.`;
+            registerForm.style.display = 'none';
             registerVerifyForm.style.display = 'block';
-            registerSteps.style.transform = 'translateX(-50%)';
           } else if (isPHPhone) {
             const resp = await fetch('/api/auth/register', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ username: formData.username, password: formData.password, full_name: formData.full_name, email: null, phone: formData.contact, address: formData.address })
+              body: JSON.stringify({ username: formData.username, password: formData.password, first_name: formData.first_name, last_name: formData.last_name, middle_name: formData.middle_name, email: null, phone: formData.contact, address: formData.address })
             });
             const data = await resp.json();
             if (resp.ok) {
-              showToast('Account created! Switching to login...', 'success');
-              setTimeout(() => { clearForms(); showLogin(); }, 1500);
+              // Auto-login after phone-based registration
+              try {
+                const loginResp = await fetch('/api/auth/login', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ username: formData.username, password: formData.password })
+                });
+                const loginData = await loginResp.json();
+                if (loginResp.ok) {
+                  localStorage.setItem('token', loginData.token);
+                  localStorage.setItem('user', JSON.stringify(loginData.user));
+                  if (loginData.user.role === 'admin') {
+                    window.location.href = '/admin';
+                  } else if (loginData.user.approved) {
+                    window.location.href = '/dashboard';
+                  } else {
+                    window.location.href = '/pending-approval';
+                  }
+                } else {
+                  showToast(loginData.error || 'Registered, but auto-login failed. Please login.', 'error');
+                  setTimeout(() => { clearForms(); showLogin(); }, 1200);
+                }
+              } catch (e) {
+                showToast('Registered. Please login to continue.', 'info');
+                setTimeout(() => { clearForms(); showLogin(); }, 1200);
+              }
             } else {
               showToast(data.error || data.message || 'Registration failed', 'error');
             }
@@ -409,8 +452,37 @@
           });
           const data = await resp.json();
           if (resp.ok) {
-            showToast('Email verified! Account created. Switching to login…', 'success');
-            setTimeout(() => { clearForms(); showLogin(); }, 1500);
+            // Auto-login after email verification/registration
+            if (pendingLogin && pendingLogin.username && pendingLogin.password) {
+              try {
+                const loginResp = await fetch('/api/auth/login', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ username: pendingLogin.username, password: pendingLogin.password })
+                });
+                const loginData = await loginResp.json();
+                if (loginResp.ok) {
+                  localStorage.setItem('token', loginData.token);
+                  localStorage.setItem('user', JSON.stringify(loginData.user));
+                  if (loginData.user.role === 'admin') {
+                    window.location.href = '/admin';
+                  } else if (loginData.user.approved) {
+                    window.location.href = '/dashboard';
+                  } else {
+                    window.location.href = '/pending-approval';
+                  }
+                } else {
+                  showToast(loginData.error || 'Registered, but auto-login failed. Please login.', 'error');
+                  setTimeout(() => { clearForms(); showLogin(); }, 1200);
+                }
+              } catch (e) {
+                showToast('Registered. Please login to continue.', 'info');
+                setTimeout(() => { clearForms(); showLogin(); }, 1200);
+              }
+            } else {
+              showToast('Account created! Switching to login…', 'success');
+              setTimeout(() => { clearForms(); showLogin(); }, 1500);
+            }
           } else {
             showToast(data.error || 'Verification failed', 'error');
           }
@@ -420,14 +492,17 @@
       });
 
       document.getElementById('backToRegister').addEventListener('click', () => {
-        registerSteps.style.transform = 'translateX(0)';
+        registerVerifyForm.style.display = 'none';
+        registerForm.style.display = 'block';
       });
 
       document.getElementById('resendCodeBtn').addEventListener('click', async () => {
         const payload = {
           username: document.getElementById('reg_username').value,
           password: document.getElementById('reg_password').value,
-          full_name: document.getElementById('reg_full_name').value,
+          first_name: document.getElementById('reg_first_name').value,
+          last_name: document.getElementById('reg_last_name').value,
+          middle_name: document.getElementById('reg_middle_name').value,
           contact: document.getElementById('reg_contact').value.trim()
         };
         try {

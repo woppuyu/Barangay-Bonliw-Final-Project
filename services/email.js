@@ -22,8 +22,16 @@ const transporter = nodemailer.createTransport({
 transporter.verify((err, success) => {
   if (err) {
     console.error('Email transporter verification failed:', err.message);
+    console.error('Full error:', err);
+    console.error('Check these settings:', {
+      host: process.env.EMAIL_HOST,
+      port: process.env.EMAIL_PORT,
+      user: process.env.EMAIL_USER,
+      hasPassword: !!process.env.EMAIL_PASSWORD
+    });
   } else {
-    console.log('Email transporter is ready to send messages');
+    console.log('✅ Email transporter is ready to send messages');
+    console.log('Using:', process.env.EMAIL_HOST, 'on port', process.env.EMAIL_PORT);
   }
 });
 
@@ -256,8 +264,10 @@ async function sendStatusUpdate(to, fullName, appointment, oldStatus, newStatus)
 async function sendVerificationCode(to, fullName, code) {
   if (!to) return;
   
+  console.log(`[EMAIL] Attempting to send verification code to ${to}`);
+  
   try {
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: `"Barangay Bonliw" <${process.env.EMAIL_USER}>`,
       to: to,
       subject: 'Email Verification Code - Barangay Bonliw',
@@ -279,9 +289,12 @@ async function sendVerificationCode(to, fullName, code) {
         </div>
       `
     });
-    console.log(`Verification code sent to ${to}`);
+    console.log(`✅ Verification code sent successfully to ${to}`);
+    console.log('Message ID:', info.messageId);
+    console.log('Response:', info.response);
   } catch (error) {
-    console.error('Error sending verification code:', error.message);
+    console.error('❌ Error sending verification code:', error.message);
+    console.error('Full error:', error);
     throw error; // Re-throw to let caller handle it
   }
 }

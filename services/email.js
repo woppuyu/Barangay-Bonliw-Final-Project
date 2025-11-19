@@ -3,16 +3,19 @@ const nodemailer = require('nodemailer');
 // Create email transporter (configured for Brevo/Sendinblue)
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || 'smtp-relay.brevo.com',
-  port: parseInt(process.env.EMAIL_PORT) || 587,
-  secure: false, // Use TLS (false for port 587)
+  port: parseInt(process.env.EMAIL_PORT) || 465,
+  secure: true, // Use SSL (true for port 465, false for 587)
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD
   },
   // Increase timeout for cloud hosting
-  connectionTimeout: 10000, // 10 seconds
-  greetingTimeout: 10000,
-  socketTimeout: 10000
+  connectionTimeout: 15000, // 15 seconds
+  greetingTimeout: 15000,
+  socketTimeout: 15000,
+  // Additional options for better reliability
+  logger: process.env.NODE_ENV === 'development',
+  debug: process.env.NODE_ENV === 'development'
 });
 
 // Verify transporter on startup to surface config issues

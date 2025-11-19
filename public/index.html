@@ -147,14 +147,15 @@
       function updateContactLabel() {
         if (!regContactInput || !regContactLabel) return;
         const v = regContactInput.value.trim();
-        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-        const isPHPhone = /^(?:\+63\d{10}|0\d{10})$/.test(v);
+        // Early intent detection: switch label as user types
+        const looksLikePhone = v.startsWith('09') || v.startsWith('+63');
+        const looksLikeEmail = /[A-Za-z@]/.test(v);
         if (!v) {
           regContactLabel.textContent = 'Email/Phone Number';
-        } else if (isEmail) {
-          regContactLabel.textContent = 'Email';
-        } else if (isPHPhone) {
+        } else if (looksLikePhone) {
           regContactLabel.textContent = 'Phone Number (+63 or 09)';
+        } else if (looksLikeEmail) {
+          regContactLabel.textContent = 'Email';
         } else {
           regContactLabel.textContent = 'Email/Phone Number';
         }

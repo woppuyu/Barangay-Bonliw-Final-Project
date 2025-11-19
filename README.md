@@ -94,6 +94,12 @@ cd "Final Project"
    # Security (generate a random string for JWT_SECRET)
    JWT_SECRET=your_long_random_secret_key_here
    BCRYPT_SALT_ROUNDS=10
+
+   # Email Configuration (Gmail)
+   EMAIL_HOST=smtp.gmail.com
+   EMAIL_PORT=587
+   EMAIL_USER=your-email@gmail.com
+   EMAIL_PASSWORD=your-16-char-app-password
    ```
 
 3. Generate a secure JWT secret:
@@ -101,6 +107,27 @@ cd "Final Project"
    node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
    ```
    Copy the output and paste it as your `JWT_SECRET` value.
+
+4. **Set up Gmail for sending emails:**
+   
+   a. Enable 2-Step Verification on your Google Account:
+      - Go to https://myaccount.google.com/security
+      - Click "2-Step Verification" and follow the setup steps
+   
+   b. Generate an App Password:
+      - Go to https://myaccount.google.com/apppasswords
+      - Select "Mail" as the app and "Other" as the device
+      - Name it "Barangay App" or similar
+      - Click "Generate"
+      - Copy the 16-character password (without spaces)
+   
+   c. Update your `.env` file:
+      ```ini
+      EMAIL_USER=your-email@gmail.com
+      EMAIL_PASSWORD=abcd efgh ijkl mnop  # Remove spaces: abcdefghijklmnop
+      ```
+   
+   **Note**: Use the App Password, NOT your regular Gmail password!
 
 ### Step 5: Install Dependencies
 
@@ -113,6 +140,7 @@ This will install all required packages:
 - pg (PostgreSQL client)
 - bcryptjs (password encryption)
 - jsonwebtoken (authentication)
+- nodemailer (email sending)
 - cors (cross-origin support)
 - body-parser (request parsing)
 - dotenv (environment variables)
@@ -132,9 +160,12 @@ The server will:
 
 Expected output:
 ```
+Email transporter is ready to send messages
 Connected to PostgreSQL and ensured schema
 Server running on http://localhost:3000
 ```
+
+**Note**: If you see "Email transporter verification failed", double-check your Gmail App Password in `.env`.
 
 ### Step 7: Access the Application
 
@@ -256,6 +287,12 @@ Note: Users now store split name fields: `first_name`, `last_name`, and optional
 - Run `npm install` again
 - Delete `node_modules` and `package-lock.json`, then `npm install`
 
+**Email not sending**
+1. Verify Gmail App Password is correct (16 characters, no spaces)
+2. Check that 2-Step Verification is enabled on your Google Account
+3. Try generating a new App Password
+4. Check the console logs for specific error messages
+
 ## 🗄️ Database Management
 
 ### View Data (PowerShell)
@@ -327,34 +364,6 @@ UPDATE users SET
 ```
 
 New code paths expect `first_name` and `last_name` at minimum; `middle_name` is optional and displayed as an initial when present.
-
-## 🚀 Deployment Notes
-
-### For Production
-
-1. **Change default credentials**: Update admin password
-2. **Secure JWT_SECRET**: Use a strong, unique secret
-3. **Update CORS settings**: Restrict origins in production
-4. **Use environment variables**: Never commit `.env` to version control
-5. **Enable SSL**: Use HTTPS for production deployment
-6. **Database backups**: Set up automated backup schedules
-7. **Monitor logs**: Implement proper logging and monitoring
-
-### Running on Another Machine
-
-**Requirements:**
-- Node.js 18+
-- PostgreSQL 15+
-
-**Steps:**
-1. Install PostgreSQL and create database/user (Step 2 above)
-2. Copy project files
-3. Create `.env` with correct credentials
-4. Run `npm install`
-5. Run `npm start`
-6. Access `http://localhost:3000`
-
-**No XAMPP Required**: This project uses Node.js (not Apache/PHP) and PostgreSQL (not MySQL bundled with XAMPP).
 
 ## 📄 API Endpoints
 

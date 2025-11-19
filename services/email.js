@@ -1,110 +1,32 @@
 const nodemailer = require('nodemailer');
 
-// Check if we should use Brevo API (for cloud hosting) or SMTP (for local dev)
-const useBrevoAPI = process.env.USE_BREVO_API === 'true' || process.env.NODE_ENV === 'production';
-
-let transporter;
-
-if (useBrevoAPI && process.env.BREVO_API_KEY) {
-  // Use Brevo API (works on Render and other cloud platforms)
-  console.log('📧 Using Brevo API for email delivery');
-  console.log('✅ Brevo API configured successfully');
-} else {
-  // Use SMTP (for local development)
-  console.log('📧 Using SMTP for email delivery');
-  transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp-relay.brevo.com',
-    port: parseInt(process.env.EMAIL_PORT) || 465,
-    secure: true,
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD
-    },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 15000,
-    logger: process.env.NODE_ENV === 'development',
-    debug: process.env.NODE_ENV === 'development'
-  });
-
-  // Verify transporter on startup
-  transporter.verify((err, success) => {
-    if (err) {
-      console.error('Email transporter verification failed:', err.message);
-      console.error('Full error:', err);
-      console.error('Check these settings:', {
-        host: process.env.EMAIL_HOST,
-        port: process.env.EMAIL_PORT,
-        user: process.env.EMAIL_USER,
-        hasPassword: !!process.env.EMAIL_PASSWORD
-      });
-    } else {
-      console.log('✅ Email transporter is ready to send messages');
-      console.log('Using:', process.env.EMAIL_HOST, 'on port', process.env.EMAIL_PORT);
-    }
-  });
-}
-
-// Helper function to send email via Brevo API using fetch
-async function sendViaBrevoAPI(emailData) {
-  const apiKey = process.env.BREVO_API_KEY;
-  if (!apiKey) {
-    throw new Error('BREVO_API_KEY not configured');
+// Create email transporter
+const transporter = nodemailer.createTransport({
+  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.EMAIL_PORT) || 587,
+  secure: false, // true for 465, false for 587
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD
   }
+});
 
-  const payload = {
-    sender: {
-      name: emailData.fromName || "Barangay Bonliw",
-      email: process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER
-    },
-    to: [{ email: emailData.to }],
-    subject: emailData.subject,
-    htmlContent: emailData.html
-  };
-
-  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-    method: 'POST',
-    headers: {
-      'accept': 'application/json',
-      'api-key': apiKey,
-      'content-type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Brevo API error: ${response.status} - ${error}`);
-  }
-
-  const data = await response.json();
-  console.log('✅ Email sent via Brevo API:', data);
-  return data;
-}
-
-// Helper function to send email (auto-detects API or SMTP)
-async function sendEmail(mailOptions) {
-  if (useBrevoAPI && process.env.BREVO_API_KEY) {
-    return await sendViaBrevoAPI({
-      to: mailOptions.to,
-      subject: mailOptions.subject,
-      html: mailOptions.html,
-      fromName: mailOptions.from ? mailOptions.from.match(/"([^"]+)"/)?.[1] : undefined
-    });
+// Verify transporter on startup to surface config issues
+transporter.verify((err, success) => {
+  if (err) {
+    console.error('Email transporter verification failed:', err.message);
   } else {
-    const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Email sent via SMTP:', info.messageId);
-    return info;
+    console.log('Email transporter is ready to send messages');
   }
-}
+});
 
 // Send welcome email after registration
 async function sendWelcomeEmail(to, fullName) {
   if (!to) return; // Skip if no email provided
   
   try {
-    await sendEmail({
-      from: `"Barangay Bonliw" <${process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER}>`,
+    await transporter.sendMail({
+      from: `"Barangay Bonliw" <${process.env.EMAIL_USER}>`,
       to: to,
       subject: 'Welcome to Barangay Bonliw Appointment System',
       html: `
@@ -139,8 +61,8 @@ async function sendAppointmentConfirmation(to, fullName, appointment) {
   if (!to) return;
   
   try {
-    await sendEmail({
-      from: `"Barangay Bonliw" <${process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER}>`,
+    await transporter.sendMail({
+      from: `"Barangay Bonliw" <${process.env.EMAIL_USER}>`,
       to: to,
       subject: 'Appointment Confirmed - Barangay Bonliw',
       html: `
@@ -235,8 +157,8 @@ async function sendStatusUpdate(to, fullName, appointment, oldStatus, newStatus)
   const config = statusConfig[newStatus] || statusConfig.approved;
   
   try {
-    await sendEmail({
-      from: `"Barangay Bonliw" <${process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER}>`,
+    await transporter.sendMail({
+      from: `"Barangay Bonliw" <${process.env.EMAIL_USER}>`,
       to: to,
       subject: `${config.title} - Barangay Bonliw`,
       html: `
@@ -330,8 +252,8 @@ async function sendVerificationCode(to, fullName, code) {
   console.log(`[EMAIL] Attempting to send verification code to ${to}`);
   
   try {
-    const result = await sendEmail({
-      from: `"Barangay Bonliw" <${process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER}>`,
+    await transporter.sendMail({
+      from: `"Barangay Bonliw" <${process.env.EMAIL_USER}>`,
       to: to,
       subject: 'Email Verification Code - Barangay Bonliw',
       html: `
@@ -352,11 +274,9 @@ async function sendVerificationCode(to, fullName, code) {
         </div>
       `
     });
-    console.log(`✅ Verification code sent successfully to ${to}`);
-    if (result.messageId) console.log('Message ID:', result.messageId);
+    console.log(`Verification code sent to ${to}`);
   } catch (error) {
-    console.error('❌ Error sending verification code:', error.message);
-    console.error('Full error:', error);
+    console.error('Error sending verification code:', error.message);
     throw error; // Re-throw to let caller handle it
   }
 }

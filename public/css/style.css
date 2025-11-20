@@ -1850,3 +1850,117 @@ tbody tr,
 .settings-icon {
   transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
+
+/* Weekly Calendar Styles */
+.weekly-calendar-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:12px;
+}
+.weekly-calendar-header h3 {
+  font-size:1rem;
+  font-weight:600;
+  color:#2d3748;
+  margin:0;
+}
+.weekly-calendar {
+  width:100%;
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+  background:#fff;
+  display:grid;
+  grid-template-columns:80px repeat(5, 1fr);
+  position:relative;
+  font-size:12px;
+  overflow:hidden;
+}
+.weekly-calendar .time-column {
+  display:flex;
+  flex-direction:column;
+  border-right:1px solid #e2e8f0;
+}
+.weekly-calendar .time-column .day-header {
+  /* Ensure time column header matches day column headers exactly */
+  background:#f7fafc;
+  padding:8px 10px;
+  border-bottom:1px solid #e2e8f0;
+  font-weight:600;
+  font-size:12px;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  box-sizing:border-box;
+  min-height:42px;
+  align-items:center;
+  justify-content:center;
+}
+.weekly-calendar .time-slot-label {
+  height:40px;
+  padding:4px 6px;
+  border-bottom:1px solid #edf2f7;
+  font-size:11px;
+  display:flex;
+  align-items:flex-start;
+  color:#718096;
+}
+.weekly-calendar .day-column {
+  position:relative;
+  border-right:1px solid #e2e8f0;
+  display:flex;
+  flex-direction:column;
+}
+.weekly-calendar .day-column:last-child { border-right:none; }
+.weekly-calendar .day-header {
+  background:#f7fafc;
+  padding:8px 10px;
+  border-bottom:1px solid #e2e8f0;
+  font-weight:600;
+  font-size:12px;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  box-sizing:border-box;
+  min-height:42px;
+  align-items:center;
+  justify-content:center;
+}
+.weekly-calendar .day-header span { font-weight:500; color:#4a5568; }
+.weekly-calendar .slot-cell {
+  height:40px;
+  border-bottom:1px solid #edf2f7;
+  position:relative;
+}
+.weekly-calendar .appointment-block {
+  position:absolute;
+  left:4px;
+  right:4px;
+  border-radius:6px;
+  padding:6px 8px;
+  font-size:11px;
+  line-height:1.3;
+  box-shadow:0 2px 6px rgba(0,0,0,0.08);
+  cursor:pointer;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.appointment-block.approved { background:#bee3f8; border:1px solid #90cdf4; color:#1a202c; }
+.appointment-block.pending { background:#fffbea; border:1px solid #fbd38d; color:#744210; }
+.appointment-block.completed { background:#c6f6d5; border:1px solid #68d391; color:#22543d; }
+.appointment-block.rejected { background:#fed7d7; border:1px solid #fc8181; color:#721c24; }
+.calendar-legend { margin-top:12px; display:flex; flex-wrap:wrap; gap:12px; font-size:11px; }
+.calendar-legend span { display:inline-flex; align-items:center; gap:6px; }
+.calendar-legend .legend-box { width:14px; height:14px; border-radius:4px; display:inline-block; }
+
+body.dark-mode .weekly-calendar { background:#1f2733; border-color:#2d3748; }
+body.dark-mode .weekly-calendar .day-header { background:#2d3748; border-color:#2d3748; color:#e2e8f0; }
+body.dark-mode .weekly-calendar .time-slot-label { border-color:#2d3748; color:#a0aec0; }
+body.dark-mode .weekly-calendar .slot-cell { border-color:#2d3748; }
+body.dark-mode .weekly-calendar-header h3 { color:#e2e8f0; }
+body.dark-mode .appointment-block.approved { background:#2b6cb0; border-color:#2c5282; color:#e2e8f0; }
+body.dark-mode .appointment-block.pending { background:#975a16; border-color:#c05621; color:#fff; }
+body.dark-mode .appointment-block.completed { background:#2f855a; border-color:#276749; color:#e2e8f0; }
+body.dark-mode .appointment-block.rejected { background:#c53030; border-color:#9b2c2c; color:#fff; }
+body.dark-mode .calendar-legend { color:#cbd5e0; }

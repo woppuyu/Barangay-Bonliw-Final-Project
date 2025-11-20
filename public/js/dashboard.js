@@ -50,7 +50,7 @@ function renderNotifications() {
     notifications.forEach((notif, idx) => {
       const item = document.createElement('div');
       item.className = 'notif-item';
-      item.innerHTML = notif.text;
+      item.innerHTML = formatResidentNotif(notif.text);
       notifDropdown.appendChild(item);
     });
     // Format all time displays
@@ -60,6 +60,39 @@ function renderNotifications() {
     notifCount.textContent = notifications.length;
     notifCount.style.display = 'inline-block';
   }
+}
+
+// Convert verbose backend text (with GMT timezone) to concise format similar to admin view
+function formatResidentNotif(raw) {
+  if (typeof raw !== 'string') return raw;
+  // Patterns to handle:
+  // "Status update: approved for appointment on Tue Nov 25 2025 00:00:00 GMT+0800 ... at 13:00:00"
+  // "Reminder: Appointment at 16:00:00 on Fri Nov 21 2025 00:00:00 GMT+0800 ..."
+  // Extract time and date pieces
+  let statusMatch = raw.match(/Status update:\s*(\w+)\s*for appointment on ([A-Z][a-z]{2}) ([A-Z][a-z]{2}) (\d{1,2}) (\d{4}).*? at (\d{1,2}:\d{2}:\d{2})/);
+  if (statusMatch) {
+    const [, status, weekday, month, day, year, time] = statusMatch;
+    const shortDate = `${month} ${day}, ${year}`;
+    const shortTime = time.substring(0,5); // HH:MM
+    return `<strong>Status:</strong> <span style='text-transform:uppercase;'>${status}</span> – ${shortDate} <span class='time-display'>${shortTime}</span>`;
+  }
+  let reminderMatch = raw.match(/Reminder:\s*Appointment at (\d{1,2}:\d{2}:\d{2}) on ([A-Z][a-z]{2}) ([A-Z][a-z]{2}) (\d{1,2}) (\d{4})/);
+  if (reminderMatch) {
+    const [ , time, weekday, month, day, year ] = reminderMatch;
+    const shortDate = `${month} ${day}, ${year}`;
+    const shortTime = time.substring(0,5);
+    return `<strong>Reminder:</strong> ${shortDate} at <span class='time-display'>${shortTime}</span>`;
+  }
+  // Generic fallback: strip GMT clutter
+  if (raw.includes('GMT')) {
+    raw = raw.replace(/GMT[+\-]\d{4}.*?(?= at )/, '').replace(/GMT[+\-]\d{4}.*/,'');
+  }
+  // If still contains a time, wrap it
+  let timeOnly = raw.match(/(\d{1,2}:\d{2})(?::\d{2})?(?![^<]*>)/);
+  if (timeOnly) {
+    raw = raw.replace(timeOnly[0], `<span class='time-display'>${timeOnly[1]}</span>`);
+  }
+  return raw;
 }
 
 function toggleNotifDropdown() {
@@ -352,6 +385,7 @@ async function loadAppointments() {
     });
 
     const appointments = await response.json();
+    window.myAppointmentsList = appointments; // cache for weekly calendar
 
     if (appointments.length === 0) {
       container.innerHTML = '<div class="empty-state"><p style="font-size: 15px;">No appointments yet. Book your first appointment above!</p></div>';
@@ -375,6 +409,10 @@ async function loadAppointments() {
       
       html += '</tbody></table></div>';
       container.innerHTML = html;
+      // If week view currently active, refresh calendar after loading
+      if (userWeeklyCalendarContainer.style.display === 'block') {
+        renderUserWeeklyCalendar();
+      }
     }
   } catch (error) {
     container.innerHTML = '<div class="alert alert-error">Failed to load appointments.</div>';
@@ -421,3 +459,167 @@ document.getElementById('appointment_date').min = tomorrow.toISOString().split('
 
 // Load appointments on page load
 loadAppointments();
+
+// ================= Resident Weekly Calendar =================
+const userWeekViewBtn = document.getElementById('userWeekViewBtn');
+const userTableViewBtn = document.getElementById('userTableViewBtn');
+const userWeeklyCalendarContainer = document.getElementById('userWeeklyCalendarContainer');
+const userWeekNav = document.getElementById('userWeekNav');
+const userPrevWeekBtn = document.getElementById('userPrevWeekBtn');
+const userNextWeekBtn = document.getElementById('userNextWeekBtn');
+const userThisWeekBtn = document.getElementById('userThisWeekBtn');
+const userCalendarMonthLabel = document.getElementById('userCalendarMonthLabel');
+const userWeeklyCalendarEl = document.getElementById('userWeeklyCalendar');
+const userCalendarLegend = document.getElementById('userCalendarLegend');
+
+let userCurrentWeekStart = startOfWeek(new Date());
+
+function startOfWeek(d) {
+  const date = new Date(d);
+  const day = date.getDay(); // 0 Sunday
+  const diff = (day === 0 ? -6 : 1) - day; // Monday start
+  date.setDate(date.getDate() + diff);
+  date.setHours(0,0,0,0);
+  return date;
+}
+
+function addDays(d, n) {
+  const copy = new Date(d);
+  copy.setDate(copy.getDate() + n);
+  return copy;
+}
+
+// Use 08:00 - 17:00 (hour slots) for resident clarity (half-hour increments optional)
+const USER_HALF_HOUR_SLOTS = [];
+for (let h=8; h<=17; h++) {
+  USER_HALF_HOUR_SLOTS.push(`${String(h).padStart(2,'0')}:00:00`);
+  if (h < 17) USER_HALF_HOUR_SLOTS.push(`${String(h).padStart(2,'0')}:30:00`);
+}
+
+function renderUserLegend() {
+  userCalendarLegend.innerHTML = '';
+  const statuses = [
+    { key:'pending', label:'Pending', cls:'pending' },
+    { key:'approved', label:'Approved', cls:'approved' },
+    { key:'completed', label:'Completed', cls:'completed' }
+  ];
+  statuses.forEach(s => {
+    const span = document.createElement('span');
+    span.innerHTML = `<span class="legend-box ${s.cls}"></span>${s.label}`;
+    userCalendarLegend.appendChild(span);
+  });
+}
+
+function renderUserWeeklyCalendar() {
+  if (!userWeeklyCalendarEl) return;
+  const weekStartISO = userCurrentWeekStart.toISOString().split('T')[0];
+  const weekEndISO = addDays(userCurrentWeekStart,4).toISOString().split('T')[0]; // Mon-Fri only
+  const appointments = (window.myAppointmentsList || []).map(a => {
+    const normDate = (typeof a.appointment_date === 'string') ? a.appointment_date.substring(0,10) : new Date(a.appointment_date).toISOString().split('T')[0];
+    return { ...a, _date: normDate };
+  }).filter(a => a._date >= weekStartISO && a._date <= weekEndISO);
+  const dayMap = {};
+  for (let i=0;i<5;i++) {
+    const d = addDays(userCurrentWeekStart,i);
+    const iso = d.toISOString().split('T')[0];
+    dayMap[iso] = [];
+  }
+  appointments.forEach(a => { if (dayMap[a._date]) dayMap[a._date].push(a); });
+  const monthYear = userCurrentWeekStart.toLocaleDateString(undefined,{ month:'long', year:'numeric' });
+  userCalendarMonthLabel.textContent = monthYear;
+  userWeeklyCalendarEl.innerHTML = '';
+  const SLOT_HEIGHT = 40;
+  const HEADER_HEIGHT = 50; // Fixed consistent height
+  
+  // Time column
+  const timeCol = document.createElement('div');
+  timeCol.className = 'time-column';
+  const timeHeader = document.createElement('div');
+  timeHeader.className = 'day-header';
+  timeHeader.style.height = HEADER_HEIGHT + 'px';
+  timeHeader.textContent = 'Time';
+  timeCol.appendChild(timeHeader);
+  USER_HALF_HOUR_SLOTS.forEach(t => {
+    const label = document.createElement('div');
+    label.className = 'time-slot-label';
+    label.style.height = SLOT_HEIGHT + 'px';
+    label.textContent = formatTime(t.substring(0,5));
+    timeCol.appendChild(label);
+  });
+  userWeeklyCalendarEl.appendChild(timeCol);
+  // Day columns
+  for (let i=0;i<5;i++) {
+    const d = addDays(userCurrentWeekStart,i);
+    const iso = d.toISOString().split('T')[0];
+    const dayCol = document.createElement('div');
+    dayCol.className = 'day-column';
+    const header = document.createElement('div');
+    header.className = 'day-header';
+    header.style.height = HEADER_HEIGHT + 'px';
+    const dayStr = d.toLocaleDateString(undefined,{ weekday:'short' });
+    header.innerHTML = `<strong>${dayStr}</strong><span>${d.getDate()}</span>`;
+    dayCol.appendChild(header);
+    USER_HALF_HOUR_SLOTS.forEach(t => {
+      const cell = document.createElement('div');
+      cell.className = 'slot-cell';
+      cell.style.height = SLOT_HEIGHT + 'px';
+      cell.dataset.time = t;
+      dayCol.appendChild(cell);
+    });
+    (dayMap[iso]||[]).forEach(a => {
+      // Handle 'HH:MM' vs 'HH:MM:SS' by comparing prefix
+      const baseTime = a.appointment_time.substring(0,5);
+      const slotIndex = USER_HALF_HOUR_SLOTS.findIndex(s => s.startsWith(baseTime));
+      if (slotIndex === -1) {
+        // console.debug('Calendar placement failed (resident):', a.appointment_time, 'base', baseTime);
+        return;
+      }
+      const durationSlots = 2; // 1 hour
+      const block = document.createElement('div');
+      block.className = `appointment-block ${a.status}`;
+      const displayTime = formatTime(a.appointment_time.substring(0,5));
+      block.innerHTML = `<div style='font-weight:600;'>${a.document_type}</div><div>${displayTime}</div><div style='font-size:10px;'>${a.status.toUpperCase()}</div>`;
+      block.style.top = `${HEADER_HEIGHT + slotIndex * SLOT_HEIGHT + 1}px`;
+      block.style.height = `${durationSlots * SLOT_HEIGHT - 4}px`;
+      dayCol.appendChild(block);
+    });
+    userWeeklyCalendarEl.appendChild(dayCol);
+  }
+  renderUserLegend();
+}
+
+function userSwitchToWeekView() {
+  document.getElementById('appointmentsContainer').style.display = 'none';
+  userWeeklyCalendarContainer.style.display = 'block';
+  userWeekNav.hidden = false;
+  if (userTableViewBtn && userWeekViewBtn) {
+    userTableViewBtn.classList.remove('btn-primary');
+    userTableViewBtn.classList.add('btn-secondary');
+    userWeekViewBtn.classList.remove('btn-secondary');
+    userWeekViewBtn.classList.add('btn-primary');
+  }
+  renderUserWeeklyCalendar();
+}
+
+function userSwitchToTableView() {
+  userWeeklyCalendarContainer.style.display = 'none';
+  document.getElementById('appointmentsContainer').style.display = 'block';
+  userWeekNav.hidden = true;
+  if (userTableViewBtn && userWeekViewBtn) {
+    userWeekViewBtn.classList.remove('btn-primary');
+    userWeekViewBtn.classList.add('btn-secondary');
+    userTableViewBtn.classList.remove('btn-secondary');
+    userTableViewBtn.classList.add('btn-primary');
+  }
+}
+
+if (userWeekViewBtn) userWeekViewBtn.addEventListener('click', userSwitchToWeekView);
+if (userTableViewBtn) userTableViewBtn.addEventListener('click', userSwitchToTableView);
+if (userPrevWeekBtn) userPrevWeekBtn.addEventListener('click', () => { userCurrentWeekStart = addDays(userCurrentWeekStart, -7); renderUserWeeklyCalendar(); });
+if (userNextWeekBtn) userNextWeekBtn.addEventListener('click', () => { userCurrentWeekStart = addDays(userCurrentWeekStart, 7); renderUserWeeklyCalendar(); });
+if (userThisWeekBtn) userThisWeekBtn.addEventListener('click', () => { userCurrentWeekStart = startOfWeek(new Date()); renderUserWeeklyCalendar(); });
+
+// Re-render calendar on time format change
+window.addEventListener('timeFormatChanged', () => {
+  if (userWeeklyCalendarContainer.style.display === 'block') renderUserWeeklyCalendar();
+});

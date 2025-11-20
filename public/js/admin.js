@@ -260,6 +260,190 @@ const notifCount = document.getElementById('notifCount');
 
 let notifications = [];
 
+// --- Weekly Calendar Logic ---
+const weekViewBtn = document.getElementById('weekViewBtn');
+const tableViewBtn = document.getElementById('tableViewBtn');
+const weeklyCalendarContainer = document.getElementById('weeklyCalendarContainer');
+const appointmentsTableContainer = document.getElementById('appointmentsContainer');
+const weekNav = document.getElementById('weekNav');
+const prevWeekBtn = document.getElementById('prevWeekBtn');
+const nextWeekBtn = document.getElementById('nextWeekBtn');
+const thisWeekBtn = document.getElementById('thisWeekBtn');
+const calendarMonthLabel = document.getElementById('calendarMonthLabel');
+const weeklyCalendarEl = document.getElementById('weeklyCalendar');
+const calendarLegend = document.getElementById('calendarLegend');
+
+let currentWeekStart = startOfWeek(new Date());
+
+function startOfWeek(d) {
+  const date = new Date(d);
+  const day = date.getDay(); // 0 Sunday
+  const diff = (day === 0 ? -6 : 1) - day; // Monday as start
+  date.setDate(date.getDate() + diff);
+  date.setHours(0,0,0,0);
+  return date;
+}
+
+function addDays(d, n) {
+  const copy = new Date(d);
+  copy.setDate(copy.getDate() + n);
+  return copy;
+}
+
+const HALF_HOUR_SLOTS = [];
+for (let h=7; h<=19; h++) { // 7AM to 7PM inclusive rows (last row 7PM)
+  HALF_HOUR_SLOTS.push(`${String(h).padStart(2,'0')}:00:00`);
+  if (h < 19) HALF_HOUR_SLOTS.push(`${String(h).padStart(2,'0')}:30:00`);
+}
+
+function renderLegend() {
+  calendarLegend.innerHTML = '';
+  const statuses = [
+    { key:'approved', label:'Approved', cls:'approved' },
+    { key:'pending', label:'Pending', cls:'pending' },
+    { key:'completed', label:'Completed', cls:'completed' },
+    { key:'rejected', label:'Rejected', cls:'rejected' }
+  ];
+  statuses.forEach(s => {
+    const span = document.createElement('span');
+    span.innerHTML = `<span class="legend-box ${s.cls}"></span>${s.label}`;
+    calendarLegend.appendChild(span);
+  });
+}
+
+function formatDayHeader(date) {
+  const dayStr = date.toLocaleDateString(undefined,{ weekday:'short' });
+  const numStr = date.getDate();
+  return `${dayStr} ${numStr}`;
+}
+
+function renderWeeklyCalendar() {
+  if (!weeklyCalendarEl) return;
+  const is24 = localStorage.getItem('timeFormat') === '24';
+  // Date-only boundaries to avoid timezone inconsistencies
+  const weekStartISO = currentWeekStart.toISOString().split('T')[0];
+  const weekEndISO = addDays(currentWeekStart,4).toISOString().split('T')[0]; // Monday-Friday
+  const appointments = (window.appointmentsList || []).map(a => {
+    // Normalize date to YYYY-MM-DD
+    const normDate = (typeof a.appointment_date === 'string') ? a.appointment_date.substring(0,10) : new Date(a.appointment_date).toISOString().split('T')[0];
+    return { ...a, _date: normDate };
+  }).filter(a => a._date >= weekStartISO && a._date <= weekEndISO);
+
+  // Build a map: key = date (YYYY-MM-DD) -> array of appointments
+  const dayMap = {};
+  for (let i=0;i<5;i++) { // Monday-Friday
+    const d = addDays(currentWeekStart,i);
+    const iso = d.toISOString().split('T')[0];
+    dayMap[iso] = [];
+  }
+  appointments.forEach(a => {
+    if (dayMap[a._date]) dayMap[a._date].push(a);
+  });
+
+  // Month label: show Month Year of week start (if spans month maybe show both)
+  const monthYear = currentWeekStart.toLocaleDateString(undefined,{ month:'long', year:'numeric' });
+  calendarMonthLabel.textContent = monthYear;
+
+  // Build grid
+  weeklyCalendarEl.innerHTML = '';
+  const SLOT_HEIGHT = 40;
+  const HEADER_HEIGHT = 50; // Fixed consistent height
+
+  // Time column
+  const timeCol = document.createElement('div');
+  timeCol.className = 'time-column';
+  const timeHeader = document.createElement('div');
+  timeHeader.className = 'day-header';
+  timeHeader.style.height = HEADER_HEIGHT + 'px';
+  timeHeader.textContent = 'Time';
+  timeCol.appendChild(timeHeader);
+  HALF_HOUR_SLOTS.forEach(t => {
+    const label = document.createElement('div');
+    label.className = 'time-slot-label';
+    label.style.height = SLOT_HEIGHT + 'px';
+    label.textContent = formatTime(t.substring(0,5));
+    timeCol.appendChild(label);
+  });
+  weeklyCalendarEl.appendChild(timeCol);
+
+  // Day columns Monday-Friday
+  for (let i=0;i<5;i++) {
+    const d = addDays(currentWeekStart,i);
+    const iso = d.toISOString().split('T')[0];
+    const dayCol = document.createElement('div');
+    dayCol.className = 'day-column';
+    const header = document.createElement('div');
+    header.className = 'day-header';
+    header.style.height = HEADER_HEIGHT + 'px';
+    const dayStr = d.toLocaleDateString(undefined,{ weekday:'short' });
+    header.innerHTML = `<strong>${dayStr}</strong><span>${d.getDate()}</span>`;
+    dayCol.appendChild(header);
+    HALF_HOUR_SLOTS.forEach(t => {
+      const cell = document.createElement('div');
+      cell.className = 'slot-cell';
+      cell.style.height = SLOT_HEIGHT + 'px';
+      cell.dataset.time = t;
+      dayCol.appendChild(cell);
+    });
+    // Place appointments for this day
+    (dayMap[iso]||[]).forEach(a => {
+      // Find position
+      // Support appointment_time stored as 'HH:MM' or 'HH:MM:SS'
+      const baseTime = a.appointment_time.substring(0,5); // HH:MM
+      const slotIndex = HALF_HOUR_SLOTS.findIndex(s => s.startsWith(baseTime));
+      if (slotIndex === -1) {
+        // Debug: could not place appointment
+        // console.debug('Calendar placement failed (admin):', a.appointment_time, 'base', baseTime);
+        return;
+      }
+      const durationSlots = 2; // assume 1 hour (2 half-hour slots)
+      const block = document.createElement('div');
+      block.className = `appointment-block ${a.status}`;
+      const displayTime = formatTime(a.appointment_time.substring(0,5));
+      block.innerHTML = `<div style='font-weight:600;'>${a.document_type}</div><div>${displayTime}</div><div style='font-size:10px;'>${a.first_name} ${a.last_name}</div>`;
+      block.style.top = `${HEADER_HEIGHT + slotIndex * SLOT_HEIGHT + 1}px`;
+      block.style.height = `${durationSlots * SLOT_HEIGHT - 4}px`;
+      dayCol.appendChild(block);
+    });
+    weeklyCalendarEl.appendChild(dayCol);
+  }
+  renderLegend();
+}
+
+function switchToWeekView() {
+  appointmentsTableContainer.style.display = 'none';
+  weeklyCalendarContainer.style.display = 'block';
+  weekNav.hidden = false;
+  // Button active styling
+  if (tableViewBtn && weekViewBtn) {
+    tableViewBtn.classList.remove('btn-primary');
+    tableViewBtn.classList.add('btn-secondary');
+    weekViewBtn.classList.remove('btn-secondary');
+    weekViewBtn.classList.add('btn-primary');
+  }
+  renderWeeklyCalendar();
+}
+
+function switchToTableView() {
+  weeklyCalendarContainer.style.display = 'none';
+  appointmentsTableContainer.style.display = 'block';
+  weekNav.hidden = true;
+  // Button active styling
+  if (tableViewBtn && weekViewBtn) {
+    weekViewBtn.classList.remove('btn-primary');
+    weekViewBtn.classList.add('btn-secondary');
+    tableViewBtn.classList.remove('btn-secondary');
+    tableViewBtn.classList.add('btn-primary');
+  }
+}
+
+if (weekViewBtn) weekViewBtn.addEventListener('click', switchToWeekView);
+if (tableViewBtn) tableViewBtn.addEventListener('click', switchToTableView);
+if (prevWeekBtn) prevWeekBtn.addEventListener('click', () => { currentWeekStart = addDays(currentWeekStart, -7); renderWeeklyCalendar(); });
+if (nextWeekBtn) nextWeekBtn.addEventListener('click', () => { currentWeekStart = addDays(currentWeekStart, 7); renderWeeklyCalendar(); });
+if (thisWeekBtn) thisWeekBtn.addEventListener('click', () => { currentWeekStart = startOfWeek(new Date()); renderWeeklyCalendar(); });
+
+
 function renderNotifications() {
   if (!notifDropdown) return;
   notifDropdown.innerHTML = '';
@@ -325,6 +509,7 @@ fetchNotifications();
 window.addEventListener('timeFormatChanged', () => {
   renderNotifications();
   loadAppointments(); // Reload appointments to update time display
+  if (weeklyCalendarContainer.style.display === 'block') renderWeeklyCalendar();
 });
 
 // Load appointments on page load

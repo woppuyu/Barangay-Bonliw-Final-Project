@@ -64,7 +64,8 @@ router.post('/login', async (req, res) => {
   try {
     const { rows } = await pool.query(`SELECT * FROM users WHERE username = $1`, [username]);
     const user = rows[0];
-    if (!user) return res.status(401).json({ error: 'Invalid username or password' });
+    // Distinguish non-existent account from bad password
+    if (!user) return res.status(404).json({ error: 'Account not found' });
 
     const isValidPassword = bcrypt.compareSync(password, user.password);
     if (!isValidPassword) return res.status(401).json({ error: 'Invalid username or password' });

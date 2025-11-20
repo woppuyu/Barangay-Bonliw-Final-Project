@@ -50,8 +50,12 @@ function renderNotifications() {
     notifications.forEach((notif, idx) => {
       const item = document.createElement('div');
       item.className = 'notif-item';
-      item.textContent = notif.text;
+      item.innerHTML = notif.text;
       notifDropdown.appendChild(item);
+    });
+    // Format all time displays
+    notifDropdown.querySelectorAll('.time-display').forEach(el => {
+      el.textContent = formatTime(el.textContent);
     });
     notifCount.textContent = notifications.length;
     notifCount.style.display = 'inline-block';
@@ -96,6 +100,12 @@ async function fetchNotifications() {
 
 // Initial fetch
 fetchNotifications();
+
+// Re-render notifications when time format changes
+window.addEventListener('timeFormatChanged', () => {
+  renderNotifications();
+  loadAppointments(); // Reload appointments to update time display
+});
 
 function openSidebar() {
   burgerToggle.classList.add('active');
@@ -353,7 +363,7 @@ async function loadAppointments() {
           <tr>
             <td>${apt.document_type}</td>
             <td>${formatDate(apt.appointment_date)}</td>
-            <td>${apt.appointment_time}</td>
+            <td>${formatTime(apt.appointment_time)}</td>
             <td><span class="status status-${apt.status}">${apt.status.toUpperCase()}</span></td>
             <td>${apt.notes || '-'}</td>
             <td>

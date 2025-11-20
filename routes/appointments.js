@@ -180,6 +180,91 @@ router.put('/:id/status', verifyToken, async (req, res) => {
   }
 });
 
+// Reschedule a pending appointment (admin only)
+router.put('/:id/reschedule', verifyToken, async (req, res) => {
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  const { id } = req.params;
+  const { appointment_date: newDate, appointment_time: newTime } = req.body;
+
+  if (!newDate || !newTime) {
+    return res.status(400).json({ error: 'New date and time are required' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Lock the appointment row
+    const { rows: aptRows } = await client.query(
+      'SELECT * FROM appointments WHERE id = $1 FOR UPDATE',
+      [id]
+    );
+    if (aptRows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+    const apt = aptRows[0];
+    if (apt.status !== 'pending') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Only pending appointments can be rescheduled' });
+    }
+
+    const originalDateTime = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
+    const newDateTime = new Date(`${newDate}T${newTime}`);
+    if (isNaN(newDateTime.getTime())) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Invalid new date/time' });
+    }
+    if (newDateTime < originalDateTime) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'New date/time must be same or after original' });
+    }
+
+    // If unchanged, short-circuit
+    if (apt.appointment_date === newDate && apt.appointment_time === newTime) {
+      await client.query('ROLLBACK');
+      return res.json({ message: 'No changes - appointment kept', appointment: apt });
+    }
+
+    // Ensure new slot available
+    const { rows: newSlotRows } = await client.query(
+      'SELECT * FROM time_slots WHERE date = $1 AND time = $2 AND is_available = TRUE FOR UPDATE',
+      [newDate, newTime]
+    );
+    if (newSlotRows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Desired new time slot is not available' });
+    }
+
+    // Free old slot
+    await client.query(
+      'UPDATE time_slots SET is_available = TRUE WHERE date = $1 AND time = $2',
+      [apt.appointment_date, apt.appointment_time]
+    );
+
+    // Reserve new slot
+    await client.query(
+      'UPDATE time_slots SET is_available = FALSE WHERE date = $1 AND time = $2',
+      [newDate, newTime]
+    );
+
+    // Update appointment
+    await client.query(
+      'UPDATE appointments SET appointment_date = $1, appointment_time = $2, updated_at = NOW() WHERE id = $3',
+      [newDate, newTime, id]
+    );
+
+    await client.query('COMMIT');
+    res.json({ message: 'Appointment rescheduled successfully', appointment_id: apt.id, old: { date: apt.appointment_date, time: apt.appointment_time }, new: { date: newDate, time: newTime } });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: 'Failed to reschedule appointment' });
+  } finally {
+    client.release();
+  }
+});
+
 // Delete appointment (and free slot)
 router.delete('/:id', verifyToken, async (req, res) => {
   const id = parseInt(req.params.id);

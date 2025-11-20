@@ -21,7 +21,12 @@ router.get('/', authenticateToken, async (req, res) => {
         }),
         ...newAppointments.rows.map(a => {
           const mi = a.middle_name ? a.middle_name.charAt(0).toUpperCase() + '.' : '';
-          return { type: 'appointment', text: `New appointment: ${a.first_name} ${a.last_name}${mi ? ' ' + mi : ''} on ${a.appointment_date} at ${a.appointment_time}` };
+          const name = `${a.first_name} ${a.last_name}${mi ? ' ' + mi : ''}`;
+          // Format date as "Mon Nov 21"
+          const date = new Date(a.appointment_date);
+          const dateStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+          // Return time in 24-hour format; client will format based on preference
+          return { type: 'appointment', text: `New appointment: <strong>${name}</strong> on ${dateStr} at <span class="time-display">${a.appointment_time}</span>` };
         })
       ];
     } else {

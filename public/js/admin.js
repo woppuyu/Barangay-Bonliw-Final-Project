@@ -67,6 +67,7 @@ async function loadAppointments() {
     });
 
     const appointments = await response.json();
+    window.appointmentsList = appointments; // cache for rescheduling
 
     if (appointments.length === 0) {
       container.innerHTML = '<div class="empty-state"><p style="font-size: 15px;">No appointments in the system yet.</p></div>';
@@ -88,6 +89,7 @@ async function loadAppointments() {
         // Show delete button only for completed or rejected appointments
         const showDelete = apt.status === 'completed' || apt.status === 'rejected';
         
+        const safeNotes = (apt.notes || '').replace(/'/g, "\\'");
         html += `
           <tr>
             <td>${apt.first_name ? formatUserName(apt) : (apt.full_name || '-')}</td>
@@ -95,11 +97,11 @@ async function loadAppointments() {
             <td>${apt.document_type}</td>
             <td>${apt.purpose || '-'}</td>
             <td>${formatDate(apt.appointment_date)}</td>
-            <td>${apt.appointment_time}</td>
+            <td>${formatTime(apt.appointment_time)}</td>
             <td><span class="status status-${apt.status}">${apt.status.toUpperCase()}</span></td>
             <td>${apt.notes || '-'}</td>
-            <td style="white-space: nowrap;">
-              <button class="btn btn-primary" style="margin-bottom: 4px;" onclick="openUpdateModal(${apt.id}, '${apt.status}', '${(apt.notes || '').replace(/'/g, "\\'")}')">Update</button>
+            <td style="white-space: nowrap; display:flex; flex-direction:column; gap:4px;">
+              <button class="btn btn-primary" onclick="openUpdateModal(${apt.id}, '${apt.status}', '${safeNotes}')">Update</button>
               ${showDelete ? `<button class="btn btn-danger" onclick="deleteAppointment(${apt.id})">Remove</button>` : ''}
             </td>
           </tr>
@@ -120,6 +122,22 @@ function openUpdateModal(id, status, notes) {
   document.getElementById('appointmentId').value = id;
   document.getElementById('status').value = status;
   document.getElementById('notes').value = notes;
+  const apt = (window.appointmentsList || []).find(a => a.id === id);
+  const rescheduleWrapper = document.getElementById('rescheduleFields');
+  if (apt && apt.status === 'pending') {
+    rescheduleWrapper.style.display = 'block';
+    const dateInput = document.getElementById('updateDate');
+    const timeInput = document.getElementById('updateTime');
+    dateInput.value = apt.appointment_date;
+    
+    // Set min to today so past dates are greyed out
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.min = today;
+    
+    timeInput.value = apt.appointment_time;
+  } else {
+    rescheduleWrapper.style.display = 'none';
+  }
   document.getElementById('updateModal').style.display = 'block';
 }
 
@@ -131,38 +149,74 @@ function closeModal() {
 // Handle update form submission
 document.getElementById('updateForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  
   const id = document.getElementById('appointmentId').value;
-  const formData = {
-    status: document.getElementById('status').value,
-    notes: document.getElementById('notes').value
-  };
-
-  const messageDiv = document.getElementById('message');
-
-  try {
-    const response = await fetch(`/api/appointments/${id}/status`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(formData)
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      showToast('Appointment updated successfully!', 'success');
-      closeModal();
-      loadAppointments();
-    } else {
-      showToast(data.error || 'Failed to update appointment.', 'error');
+  const statusVal = document.getElementById('status').value;
+  const notesVal = document.getElementById('notes').value;
+  const apt = (window.appointmentsList || []).find(a => a.id == id);
+  let dateChanged = false;
+  let newDate, newTime;
+  if (apt && apt.status === 'pending') {
+    newDate = document.getElementById('updateDate').value || apt.appointment_date;
+    newTime = document.getElementById('updateTime').value || apt.appointment_time;
+    dateChanged = (newDate !== apt.appointment_date) || (newTime !== apt.appointment_time);
+    if (dateChanged) {
+      const originalDT = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
+      const newDT = new Date(`${newDate}T${newTime}`);
+      if (isNaN(newDT.getTime())) {
+        showToast('Invalid date/time.', 'error');
+        return;
+      }
+      if (newDT < originalDT) {
+        showToast('New date/time cannot be earlier than original.', 'error');
+        return;
+      }
+      // Attempt reschedule first
+      try {
+        const resResp = await fetch(`/api/appointments/${id}/reschedule`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ appointment_date: newDate, appointment_time: newTime })
+        });
+        const resData = await resResp.json();
+        if (!resResp.ok) {
+          showToast(resData.error || 'Reschedule failed.', 'error');
+          return;
+        }
+      } catch (err) {
+        showToast('Reschedule request failed.', 'error');
+        console.error(err);
+        return;
+      }
     }
-  } catch (error) {
-    showToast('Failed to update appointment.', 'error');
-    console.error('Error:', error);
   }
+
+  // Status/notes update if changed
+  const needStatusUpdate = !apt || apt.status !== statusVal || (apt.notes || '') !== notesVal;
+  if (needStatusUpdate) {
+    try {
+      const response = await fetch(`/api/appointments/${id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: statusVal, notes: notesVal })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        showToast(data.error || 'Failed to update status.', 'error');
+        return;
+      }
+    } catch (err) {
+      showToast('Status update failed.', 'error');
+      console.error(err);
+      return;
+    }
+  }
+
+  showToast(dateChanged || needStatusUpdate ? 'Appointment updated.' : 'No changes applied.', 'success');
+  closeModal();
+  loadAppointments();
 });
 
 // Delete appointment (admin only)
@@ -216,8 +270,12 @@ function renderNotifications() {
     notifications.forEach((notif, idx) => {
       const item = document.createElement('div');
       item.className = 'notif-item';
-      item.textContent = notif.text;
+      item.innerHTML = notif.text;
       notifDropdown.appendChild(item);
+    });
+    // Format all time displays
+    notifDropdown.querySelectorAll('.time-display').forEach(el => {
+      el.textContent = formatTime(el.textContent);
     });
     notifCount.textContent = notifications.length;
     notifCount.style.display = 'inline-block';
@@ -263,5 +321,13 @@ async function fetchNotifications() {
 // Initial fetch
 fetchNotifications();
 
+// Re-render notifications when time format changes
+window.addEventListener('timeFormatChanged', () => {
+  renderNotifications();
+  loadAppointments(); // Reload appointments to update time display
+});
+
 // Load appointments on page load
 loadAppointments();
+
+// Removed separate reschedule logic; integrated into update modal

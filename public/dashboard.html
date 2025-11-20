@@ -25,6 +25,27 @@
           </button>
           <div id="notifDropdown" class="notif-dropdown" style="display:none;"></div>
         </div>
+        <div class="site-settings-area">
+          <button id="siteSettingsBtn" class="site-settings-btn" aria-label="Site Settings">
+            <span class="settings-icon"></span>
+          </button>
+          <div id="siteSettingsDropdown" class="site-settings-dropdown" style="display:none;">
+            <div class="settings-item">
+              <label class="toggle-label">
+                <span>Dark Mode</span>
+                <input type="checkbox" id="darkModeToggle" class="toggle-checkbox">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="settings-item">
+              <label class="toggle-label">
+                <span>24-Hour Time</span>
+                <input type="checkbox" id="timeFormatToggle" class="toggle-checkbox">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
         <div class="user-info" id="userInfo"></div>
       </div>
     </div>
@@ -101,6 +122,8 @@
 
   <script src="/js/modal-utils.js"></script>
   <script src="/js/toast.js"></script>
+  <script src="/js/time-utils.js"></script>
+  <script src="/js/site-settings.js"></script>
   <script src="/js/dashboard.js"></script>
 </body>
 </html>

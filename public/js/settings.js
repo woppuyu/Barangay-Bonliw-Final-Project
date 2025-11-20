@@ -121,11 +121,11 @@ document.getElementById('basicInfoForm').addEventListener('submit', async (e) =>
   if (messageDiv) messageDiv.innerHTML = '';
 
   const formData = {
-    first_name: document.getElementById('first_name').value,
-    last_name: document.getElementById('last_name').value,
-    middle_name: document.getElementById('middle_name').value,
-    phone: document.getElementById('phone').value,
-    address: document.getElementById('address').value
+    first_name: document.getElementById('first_name').value.trim(),
+    last_name: document.getElementById('last_name').value.trim(),
+    middle_name: document.getElementById('middle_name').value.trim(),
+    phone: document.getElementById('phone').value.trim(),
+    address: document.getElementById('address').value.trim()
   };
 
   try {
@@ -163,7 +163,7 @@ document.getElementById('usernameForm').addEventListener('submit', (e) => {
   const messageDiv = document.getElementById('message');
   if (messageDiv) messageDiv.innerHTML = '';
 
-  const newUsername = document.getElementById('new_username').value;
+  const newUsername = document.getElementById('new_username').value.trim();
 
   showConfirmModal(
     'Change Username',
@@ -203,7 +203,7 @@ document.getElementById('sendCodeBtn').addEventListener('click', async () => {
   const messageDiv = document.getElementById('message');
   if (messageDiv) messageDiv.innerHTML = '';
   
-  const newEmail = document.getElementById('new_email').value;
+  const newEmail = document.getElementById('new_email').value.trim();
   
   if (!newEmail) {
     showToast('Please enter a new email address', 'error');
@@ -241,8 +241,8 @@ document.getElementById('verifyEmailForm').addEventListener('submit', async (e) 
   const messageDiv = document.getElementById('message');
   if (messageDiv) messageDiv.innerHTML = '';
 
-  const code = document.getElementById('verification_code').value;
-  const newEmail = document.getElementById('new_email').value;
+  const code = document.getElementById('verification_code').value.trim();
+  const newEmail = document.getElementById('new_email').value.trim();
 
   try {
     const response = await fetch('/api/auth/verify-and-update-email', {
@@ -344,8 +344,12 @@ function renderNotifications() {
     notifications.forEach((notif, idx) => {
       const item = document.createElement('div');
       item.className = 'notif-item';
-      item.textContent = notif.text;
+      item.innerHTML = notif.text;
       notifDropdown.appendChild(item);
+    });
+    // Format all time displays
+    notifDropdown.querySelectorAll('.time-display').forEach(el => {
+      el.textContent = formatTime(el.textContent);
     });
     notifCount.textContent = notifications.length;
     notifCount.style.display = 'inline-block';
@@ -390,6 +394,11 @@ async function fetchNotifications() {
 
 // Initial fetch
 fetchNotifications();
+
+// Re-render notifications when time format changes
+window.addEventListener('timeFormatChanged', () => {
+  renderNotifications();
+});
 
 // Load user data on page load
 loadUserData();

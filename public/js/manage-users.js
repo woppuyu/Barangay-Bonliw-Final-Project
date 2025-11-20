@@ -331,8 +331,12 @@ function renderNotifications() {
     notifications.forEach((notif, idx) => {
       const item = document.createElement('div');
       item.className = 'notif-item';
-      item.textContent = notif.text;
+      item.innerHTML = notif.text;
       notifDropdown.appendChild(item);
+    });
+    // Format all time displays
+    notifDropdown.querySelectorAll('.time-display').forEach(el => {
+      el.textContent = formatTime(el.textContent);
     });
     notifCount.textContent = notifications.length;
     notifCount.style.display = 'inline-block';
@@ -377,6 +381,11 @@ async function fetchNotifications() {
 
 // Initial fetch
 fetchNotifications();
+
+// Re-render notifications when time format changes
+window.addEventListener('timeFormatChanged', () => {
+  renderNotifications();
+});
 
 // Load users on page load
 loadUsers();

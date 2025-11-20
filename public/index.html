@@ -108,11 +108,11 @@
                 <input type="text" id="reg_verification_code" maxlength="6" placeholder="123456" required>
                 <div class="field-error" id="error_reg_code"></div>
               </div>
-              <div class="modal-footer" style="justify-content: space-between;">
-                <button type="button" class="btn-secondary" id="backToRegister">Back</button>
-                <div style="display:flex; gap: 8px;">
-                  <button type="button" class="btn btn-secondary" id="resendCodeBtn">Resend Code</button>
-                  <button type="submit" class="btn btn-primary">Create Account</button>
+              <div class="modal-footer" style="justify-content: center;">
+                <div style="display:flex; gap: 8px; width: 100%;">
+                  <button type="button" class="btn-secondary" id="backToRegister" style="flex:1;">Back</button>
+                  <button type="button" class="btn btn-secondary" id="resendCodeBtn" style="flex:1;">Resend Code</button>
+                  <button type="submit" class="btn btn-primary" style="flex:1;">Verify</button>
                 </div>
               </div>
             </form>
@@ -141,6 +141,8 @@
       const messageDiv = document.getElementById('message');
       let regToken = null;
       let pendingLogin = null;
+      let resendTimerId = null;
+      let resendRemaining = 0;
       // Dynamic label update for contact field
       const regContactInput = document.getElementById('reg_contact');
       const regContactLabel = document.querySelector('label[for="reg_contact"]');
@@ -212,6 +214,39 @@
         }, 300);
       }
 
+      function setResendButtonState({ disabled, seconds }) {
+        if (!resendCodeBtn) return;
+        resendCodeBtn.disabled = !!disabled;
+        if (disabled && typeof seconds === 'number') {
+          resendCodeBtn.innerHTML = `Resend Code<span class="btn-subtext">(${seconds}s)</span>`;
+        } else {
+          resendCodeBtn.innerHTML = 'Resend Code';
+        }
+      }
+
+      function clearResendCountdown() {
+        if (resendTimerId) {
+          clearInterval(resendTimerId);
+          resendTimerId = null;
+        }
+        resendRemaining = 0;
+        setResendButtonState({ disabled: false });
+      }
+
+      function startResendCountdown(seconds = 60) {
+        clearResendCountdown();
+        resendRemaining = seconds;
+        setResendButtonState({ disabled: true, seconds: resendRemaining });
+        resendTimerId = setInterval(() => {
+          resendRemaining -= 1;
+          if (resendRemaining <= 0) {
+            clearResendCountdown();
+          } else {
+            setResendButtonState({ disabled: true, seconds: resendRemaining });
+          }
+        }, 1000);
+      }
+
       if (openBtn) openBtn.addEventListener('click', () => openModal());
       
       // Clear forms when explicitly cancelling
@@ -238,6 +273,7 @@
       modal.addEventListener('click', (e) => { 
         if (e.target === modal) {
           clearForms();
+          clearResendCountdown();
           closeModal();
         }
       });
@@ -246,6 +282,7 @@
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && modal.classList.contains('active')) {
           clearForms();
+          clearResendCountdown();
           closeModal();
         }
       });
@@ -256,7 +293,7 @@
         messageDiv.innerHTML = '';
 
         const formData = {
-          username: document.getElementById('login_username').value,
+          username: document.getElementById('login_username').value.trim(),
           password: document.getElementById('login_password').value
         };
 
@@ -362,13 +399,13 @@
         }
 
         const formData = {
-          username: document.getElementById('reg_username').value,
+          username: document.getElementById('reg_username').value.trim(),
           password: document.getElementById('reg_password').value,
-          first_name: document.getElementById('reg_first_name').value,
-          last_name: document.getElementById('reg_last_name').value,
-          middle_name: document.getElementById('reg_middle_name').value,
+          first_name: document.getElementById('reg_first_name').value.trim(),
+          last_name: document.getElementById('reg_last_name').value.trim(),
+          middle_name: document.getElementById('reg_middle_name').value.trim(),
           contact: document.getElementById('reg_contact')?.value.trim(),
-          address: document.getElementById('reg_address').value
+          address: document.getElementById('reg_address').value.trim()
         };
 
         try {
@@ -391,6 +428,7 @@
             verifyHelp.textContent = `Enter the 6-digit code sent to ${formData.contact}.`;
             registerForm.style.display = 'none';
             registerVerifyForm.style.display = 'block';
+            startResendCountdown(60);
           } else if (isPHPhone) {
             const resp = await fetch('/api/auth/register', {
               method: 'POST',
@@ -495,15 +533,17 @@
       document.getElementById('backToRegister').addEventListener('click', () => {
         registerVerifyForm.style.display = 'none';
         registerForm.style.display = 'block';
+        clearResendCountdown();
       });
 
       document.getElementById('resendCodeBtn').addEventListener('click', async () => {
+        if (resendCodeBtn.disabled) return; // cooldown active
         const payload = {
-          username: document.getElementById('reg_username').value,
+          username: document.getElementById('reg_username').value.trim(),
           password: document.getElementById('reg_password').value,
-          first_name: document.getElementById('reg_first_name').value,
-          last_name: document.getElementById('reg_last_name').value,
-          middle_name: document.getElementById('reg_middle_name').value,
+          first_name: document.getElementById('reg_first_name').value.trim(),
+          last_name: document.getElementById('reg_last_name').value.trim(),
+          middle_name: document.getElementById('reg_middle_name').value.trim(),
           contact: document.getElementById('reg_contact').value.trim()
         };
         try {
@@ -516,6 +556,7 @@
           if (resp.ok) {
             regToken = data.regToken;
             showToast('Verification code resent', 'info');
+            startResendCountdown(60);
           } else {
             showToast(data.error || 'Failed to resend code', 'error');
           }
@@ -566,5 +607,30 @@
       </ul>
     </div>
   </div>
+
+  <!-- Floating Site Settings Button -->
+  <button id="floatingSiteSettingsBtn" class="floating-settings-btn" aria-label="Site Settings">
+    <span class="settings-icon"></span>
+  </button>
+
+  <!-- Site Settings Dropdown (for floating button) -->
+  <div id="floatingSiteSettingsDropdown" class="floating-settings-dropdown" style="display:none;">
+    <div class="settings-item">
+      <label class="toggle-label">
+        <span>Dark Mode</span>
+        <input type="checkbox" id="darkModeToggle" class="toggle-checkbox">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="settings-item">
+      <label class="toggle-label">
+        <span>24-Hour Time</span>
+        <input type="checkbox" id="timeFormatToggle" class="toggle-checkbox">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <script src="/js/site-settings.js"></script>
 </body>
 </html>

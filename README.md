@@ -186,7 +186,7 @@ Open your web browser and navigate to: **http://localhost:3000**
 1. **Register**: Create an account with your details
 2. **Login**: Access your dashboard
 3. **Book Appointment**: 
-   - Select document type (Barangay Clearance, Certificate of Residency, etc.)
+   - Select document type (Barangay Clearance, Certificate of Residency, Certificate of Relationship, Certificate of Indigency, Others)
    - Choose available date and time
    - Submit appointment request
 4. **Track Status**: View your appointments and their current status

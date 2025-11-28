@@ -14,9 +14,10 @@ const transporter = nodemailer.createTransport({
 // Verify transporter on startup to surface config issues
 transporter.verify((err, success) => {
   if (err) {
-    console.error('Email transporter verification failed:', err.message);
+    console.warn('⚠️ Email transporter verification failed:', err.message);
+    console.warn('⚠️ Email notifications will be disabled. App will continue running.');
   } else {
-    console.log('Email transporter is ready to send messages');
+    console.log('✓ Email transporter is ready to send messages');
   }
 });
 

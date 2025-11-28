@@ -225,6 +225,8 @@ function showMyAppointments() {
   bookAppointmentPanel.style.display = 'none';
   myAppointmentsPanel.style.display = 'block';
   closeSidebar();
+  // Restore view preference when switching back to appointments
+  restoreUserViewPreference();
 }
 
 if (bookAppointmentLink) {
@@ -253,6 +255,7 @@ document.getElementById('logoutBtn').addEventListener('click', (e) => {
   e.preventDefault();
   localStorage.removeItem('token');
   localStorage.removeItem('user');
+  sessionStorage.clear(); // Clear view preferences
   window.location.href = '/';
 });
 
@@ -409,10 +412,8 @@ async function loadAppointments() {
       
       html += '</tbody></table></div>';
       container.innerHTML = html;
-      // If week view currently active, refresh calendar after loading
-      if (userWeeklyCalendarContainer.style.display === 'block') {
-        renderUserWeeklyCalendar();
-      }
+      // Restore view preference if set
+      restoreUserViewPreference();
     }
   } catch (error) {
     container.innerHTML = '<div class="alert alert-error">Failed to load appointments.</div>';
@@ -557,7 +558,7 @@ function renderUserWeeklyCalendar() {
     header.className = 'day-header';
     header.style.height = HEADER_HEIGHT + 'px';
     const dayStr = d.toLocaleDateString(undefined,{ weekday:'short' });
-    header.innerHTML = `<strong>${dayStr}</strong><span>${d.getDate()}</span>`;
+    header.innerHTML = `<span>${dayStr}</span> <strong>${d.getDate()}</strong>`;
     dayCol.appendChild(header);
     USER_HALF_HOUR_SLOTS.forEach(t => {
       const cell = document.createElement('div');
@@ -588,6 +589,14 @@ function renderUserWeeklyCalendar() {
   renderUserLegend();
 }
 
+function restoreUserViewPreference() {
+  const savedView = sessionStorage.getItem('userViewPreference');
+  if (savedView === 'week') {
+    userSwitchToWeekView();
+  }
+  // Default is table view, no action needed
+}
+
 function userSwitchToWeekView() {
   document.getElementById('appointmentsContainer').style.display = 'none';
   userWeeklyCalendarContainer.style.display = 'block';
@@ -598,6 +607,7 @@ function userSwitchToWeekView() {
     userWeekViewBtn.classList.remove('btn-secondary');
     userWeekViewBtn.classList.add('btn-primary');
   }
+  sessionStorage.setItem('userViewPreference', 'week');
   renderUserWeeklyCalendar();
 }
 
@@ -611,6 +621,7 @@ function userSwitchToTableView() {
     userTableViewBtn.classList.remove('btn-secondary');
     userTableViewBtn.classList.add('btn-primary');
   }
+  sessionStorage.setItem('userViewPreference', 'table');
 }
 
 if (userWeekViewBtn) userWeekViewBtn.addEventListener('click', userSwitchToWeekView);

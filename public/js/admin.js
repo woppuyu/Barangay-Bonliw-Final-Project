@@ -52,6 +52,7 @@ document.getElementById('logoutBtn').addEventListener('click', (e) => {
   e.preventDefault();
   localStorage.removeItem('token');
   localStorage.removeItem('user');
+  sessionStorage.clear(); // Clear view preferences
   window.location.href = '/';
 });
 
@@ -111,6 +112,8 @@ async function loadAppointments() {
       html += '</tbody></table></div>';
       container.innerHTML = html;
     }
+    // Restore view preference if set
+    restoreAdminViewPreference();
   } catch (error) {
     container.innerHTML = '<div class="alert alert-error">Failed to load appointments.</div>';
     console.error('Error:', error);
@@ -376,7 +379,7 @@ function renderWeeklyCalendar() {
     header.className = 'day-header';
     header.style.height = HEADER_HEIGHT + 'px';
     const dayStr = d.toLocaleDateString(undefined,{ weekday:'short' });
-    header.innerHTML = `<strong>${dayStr}</strong><span>${d.getDate()}</span>`;
+    header.innerHTML = `<span>${dayStr}</span> <strong>${d.getDate()}</strong>`;
     dayCol.appendChild(header);
     HALF_HOUR_SLOTS.forEach(t => {
       const cell = document.createElement('div');
@@ -410,6 +413,14 @@ function renderWeeklyCalendar() {
   renderLegend();
 }
 
+function restoreAdminViewPreference() {
+  const savedView = sessionStorage.getItem('adminViewPreference');
+  if (savedView === 'week') {
+    switchToWeekView();
+  }
+  // Default is table view, no action needed
+}
+
 function switchToWeekView() {
   appointmentsTableContainer.style.display = 'none';
   weeklyCalendarContainer.style.display = 'block';
@@ -421,6 +432,7 @@ function switchToWeekView() {
     weekViewBtn.classList.remove('btn-secondary');
     weekViewBtn.classList.add('btn-primary');
   }
+  sessionStorage.setItem('adminViewPreference', 'week');
   renderWeeklyCalendar();
 }
 
@@ -435,6 +447,7 @@ function switchToTableView() {
     tableViewBtn.classList.remove('btn-secondary');
     tableViewBtn.classList.add('btn-primary');
   }
+  sessionStorage.setItem('adminViewPreference', 'table');
 }
 
 if (weekViewBtn) weekViewBtn.addEventListener('click', switchToWeekView);

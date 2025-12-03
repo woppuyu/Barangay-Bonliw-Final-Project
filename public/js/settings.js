@@ -23,7 +23,7 @@ if (user.role === 'resident') {
 // Display user info
 function formatUserName(user) {
   const mi = user.middle_name ? user.middle_name.charAt(0).toUpperCase() + '.' : '';
-  return `${user.first_name} ${user.last_name}${mi ? ' ' + mi : ''}`;
+  return `${user.first_name}${mi ? ' ' + mi : ''} ${user.last_name}`;
 }
 document.getElementById('userInfo').textContent = `Welcome, ${formatUserName(user)}`;
 document.getElementById('sidebarUserName').textContent = formatUserName(user);
@@ -38,6 +38,7 @@ if (isAdmin) {
   sidebarMenu.innerHTML = `
     <li><a href="/admin">Manage Appointments</a></li>
     <li><a href="/manage-users">Manage Users</a></li>
+    <li><a href="/admin-stats">Statistics</a></li>
     <li><a href="/settings">Settings</a></li>
     <li><button id="logoutBtn" class="logout">Logout</button></li>
   `;
@@ -49,6 +50,16 @@ if (isAdmin) {
     <li><button id="logoutBtn" class="logout">Logout</button></li>
   `;
 }
+
+// Highlight active menu item after populating menu
+const currentPath = window.location.pathname;
+const menuLinks = sidebarMenu.querySelectorAll('a');
+menuLinks.forEach(link => {
+  const linkPath = new URL(link.href).pathname;
+  if (linkPath === currentPath) {
+    link.classList.add('active');
+  }
+});
 
 // Burger menu toggle
 const burgerToggle = document.getElementById('burgerToggle');

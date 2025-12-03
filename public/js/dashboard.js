@@ -23,7 +23,7 @@ if (user.role === 'resident') {
 // Display user info
 function formatUserName(user) {
   const mi = user.middle_name ? user.middle_name.charAt(0).toUpperCase() + '.' : '';
-  return `${user.first_name} ${user.last_name}${mi ? ' ' + mi : ''}`;
+  return `${user.first_name}${mi ? ' ' + mi : ''} ${user.last_name}`;
 }
 document.getElementById('userInfo').textContent = `Welcome, ${formatUserName(user)}`;
 document.getElementById('sidebarUserName').textContent = formatUserName(user);
@@ -219,6 +219,9 @@ function showBookAppointment() {
   bookAppointmentPanel.style.display = 'block';
   myAppointmentsPanel.style.display = 'none';
   closeSidebar();
+  // Update active menu item
+  if (bookAppointmentLink) bookAppointmentLink.classList.add('active');
+  if (myAppointmentsLink) myAppointmentsLink.classList.remove('active');
 }
 
 function showMyAppointments() {
@@ -227,6 +230,9 @@ function showMyAppointments() {
   closeSidebar();
   // Restore view preference when switching back to appointments
   restoreUserViewPreference();
+  // Update active menu item
+  if (myAppointmentsLink) myAppointmentsLink.classList.add('active');
+  if (bookAppointmentLink) bookAppointmentLink.classList.remove('active');
 }
 
 if (bookAppointmentLink) {
@@ -264,10 +270,10 @@ appointmentDateInput.addEventListener('change', async (e) => {
   const date = e.target.value;
   appointmentTimeSelect.innerHTML = '<option value="">Loading...</option>';
 
-  // Only allow times between 08:00 and 17:00
+  // Only allow times between 07:00 and 16:30 (last slot at 4:30 PM)
   // If selected date is minDate, restrict times to those >= min hour
-  let minHour = 8;
-  let maxHour = 17;
+  let minHour = 7;
+  let maxHour = 16; // Stop at 4:30 PM
   let allowedTimes = [];
 
   // If selected date is the min date, restrict times to those after minDate's hour
@@ -277,8 +283,12 @@ appointmentDateInput.addEventListener('change', async (e) => {
     minHour = Math.max(minHour, minDate.getHours());
   }
 
+  // Generate 30-minute interval slots from 7:00 AM to 4:30 PM
   for (let hour = minHour; hour <= maxHour; hour++) {
     allowedTimes.push((hour < 10 ? '0' : '') + hour + ':00');
+    if (hour < maxHour || (hour === maxHour && maxHour === 16)) {
+      allowedTimes.push((hour < 10 ? '0' : '') + hour + ':30');
+    }
   }
 
   // Simulate fetching available slots (replace with backend filtering if needed)
@@ -490,11 +500,15 @@ function addDays(d, n) {
   return copy;
 }
 
-// Use 08:00 - 17:00 (hour slots) for resident clarity (half-hour increments optional)
+// Use 07:00 - 16:30 (30-minute slots) for resident clarity
 const USER_HALF_HOUR_SLOTS = [];
-for (let h=8; h<=17; h++) {
+for (let h=7; h<=16; h++) {
   USER_HALF_HOUR_SLOTS.push(`${String(h).padStart(2,'0')}:00:00`);
-  if (h < 17) USER_HALF_HOUR_SLOTS.push(`${String(h).padStart(2,'0')}:30:00`);
+  if (h < 16) {
+    USER_HALF_HOUR_SLOTS.push(`${String(h).padStart(2,'0')}:30:00`);
+  } else if (h === 16) {
+    USER_HALF_HOUR_SLOTS.push(`${String(h).padStart(2,'0')}:30:00`); // Last slot at 4:30 PM
+  }
 }
 
 function renderUserLegend() {

@@ -12,6 +12,8 @@ body {
   line-height: 1.6;
   overflow-x: hidden;
   width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 .container {
@@ -415,6 +417,14 @@ nav a:hover, nav button:hover {
   color: #3182ce;
 }
 
+.sidebar-menu a.active {
+  background: #ebf8ff;
+  color: #3182ce;
+  font-weight: 600;
+  border-left: 4px solid #3182ce;
+  padding-left: 20px;
+}
+
 .sidebar-menu button.logout {
   color: #e53e3e;
   margin-top: 20px;
@@ -580,34 +590,122 @@ header .user-info {
   background: #4a5568;
 }
 
-/* Hero Section */
-.hero {
-  text-align: center;
-  padding: 80px 20px 60px;
-  background: white;
-  margin: -40px -20px 40px;
-  border-bottom: 1px solid #e2e8f0;
+/* Homepage Hero Section */
+.homepage-hero {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+  padding: 0;
+  background: #f5f7fa;
+  overflow: hidden;
 }
 
-.hero h1 {
-  font-size: 2.5rem;
-  margin-bottom: 16px;
+.hero-image-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 60vh;
+  overflow: hidden;
+  /* Fallback gradient if image doesn't load */
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.hero-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  /* Hide broken image icon */
+  display: block;
+}
+
+.hero-gradient-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, 
+    rgba(245, 247, 250, 0) 0%, 
+    rgba(245, 247, 250, 0.1) 30%,
+    rgba(245, 247, 250, 0.5) 60%,
+    rgba(245, 247, 250, 0.9) 85%,
+    rgba(245, 247, 250, 1) 100%);
+  pointer-events: none;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 10;
+  max-width: 900px;
+  width: 100%;
+  padding: 0 40px 60px;
+  text-align: center;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.brgy-logo-container {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+  margin-top: 20vh;
+}
+
+.brgy-logo {
+  width: 180px;
+  height: 180px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2));
+}
+
+.hero-content h1 {
+  font-size: 4rem;
+  margin-bottom: 80px;
   color: #1a202c;
   font-weight: 700;
-  letter-spacing: -1px;
+  letter-spacing: -1.5px;
+  text-shadow: 0 2px 12px rgba(255, 255, 255, 0.9);
 }
 
-.hero p {
-  font-size: 1.1rem;
+.barangay-info {
+  text-align: left;
   margin-bottom: 32px;
-  color: #4a5568;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
+  background: #ffffff;
+  padding: 32px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 800px;
 }
 
-.hero .btn {
-  margin: 0 8px;
+.barangay-info p {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: #4a5568;
+  margin-bottom: 16px;
+}
+
+.barangay-info h3 {
+  font-size: 1.25rem;
+  color: #2d3748;
+  margin-top: 24px;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.hero-content .btn {
+  padding: 14px 32px;
+  font-size: 16px;
+  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.3);
 }
 
 /* Features */
@@ -983,8 +1081,6 @@ tbody tr:hover {
 /* Prevent background scroll when modal is open */
 body.modal-open {
   overflow: hidden;
-  position: fixed;
-  width: 100%;
 }
 
 .btn-success {
@@ -1031,24 +1127,51 @@ body.modal-open {
     justify-content: center;
   }
 
-  /* Hero section mobile adjustments */
-  .hero {
-    padding: 40px 16px 32px;
-    margin: -24px 0 24px 0;
-    width: 100%;
+  /* Homepage Hero Mobile */
+  .homepage-hero {
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
   }
 
-  .hero h1 {
-    font-size: 1.75rem;
+  .hero-image-container {
+    height: 50vh;
   }
 
-  .hero p {
+  .hero-content {
+    padding: 0 24px 50px;
+  }
+
+  .brgy-logo-container {
+    margin-top: 15vh;
+  }
+
+  .brgy-logo {
+    width: 140px;
+    height: 140px;
+  }
+
+  .hero-content h1 {
+    font-size: 2.5rem;
+    margin-bottom: 60px;
+  }
+
+  .barangay-info {
+    padding: 24px;
+  }
+
+  .barangay-info p {
     font-size: 0.95rem;
   }
 
-  .hero .btn {
+  .barangay-info h3 {
+    font-size: 1.1rem;
+    margin-top: 20px;
+  }
+
+  .hero-content .btn {
     width: 100%;
-    margin: 8px 0;
+    padding: 14px 20px;
   }
 
   /* Cards mobile responsive */
@@ -1243,8 +1366,42 @@ body.modal-open {
     font-size: 1rem;
   }
 
-  .hero h1 {
-    font-size: 1.5rem;
+  .homepage-hero {
+    min-height: 100vh;
+  }
+
+  .hero-image-container {
+    height: 45vh;
+  }
+
+  .hero-content {
+    padding: 0 20px 40px;
+  }
+
+  .brgy-logo-container {
+    margin-top: 12vh;
+  }
+
+  .brgy-logo {
+    width: 110px;
+    height: 110px;
+  }
+
+  .hero-content h1 {
+    font-size: 2rem;
+    margin-bottom: 50px;
+  }
+
+  .barangay-info {
+    padding: 20px;
+  }
+
+  .barangay-info p {
+    font-size: 0.9rem;
+  }
+
+  .barangay-info h3 {
+    font-size: 1rem;
   }
 
   .card {
@@ -1478,18 +1635,39 @@ body.dark-mode .toggle-password:hover {
   background: #718096;
 }
 
-/* Hero Dark Mode */
-body.dark-mode .hero {
-  background: #2d3748;
-  border-bottom-color: #4a5568;
+/* Homepage Hero Dark Mode */
+body.dark-mode .homepage-hero {
+  background: #1a202c;
 }
 
-body.dark-mode .hero h1 {
+body.dark-mode .hero-gradient-overlay {
+  background: linear-gradient(to bottom, 
+    rgba(26, 32, 44, 0) 0%, 
+    rgba(26, 32, 44, 0.1) 30%,
+    rgba(26, 32, 44, 0.5) 60%,
+    rgba(26, 32, 44, 0.9) 85%,
+    rgba(26, 32, 44, 1) 100%);
+}
+
+body.dark-mode .hero-content h1 {
   color: #f7fafc;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
 }
 
-body.dark-mode .hero p {
+body.dark-mode .brgy-logo {
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5));
+}
+
+body.dark-mode .barangay-info {
+  background: #2d3748;
+}
+
+body.dark-mode .barangay-info p {
   color: #cbd5e0;
+}
+
+body.dark-mode .barangay-info h3 {
+  color: #e2e8f0;
 }
 
 /* Feature Cards Dark Mode */
@@ -1593,6 +1771,14 @@ body.dark-mode .sidebar-menu a:hover,
 body.dark-mode .sidebar-menu button:hover {
   background: #374151;
   color: #63b3ed;
+}
+
+body.dark-mode .sidebar-menu a.active {
+  background: #1e3a5f;
+  color: #63b3ed;
+  font-weight: 600;
+  border-left: 4px solid #63b3ed;
+  padding-left: 20px;
 }
 
 body.dark-mode .sidebar-menu button.logout {

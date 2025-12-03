@@ -72,7 +72,7 @@ router.post('/', verifyToken, async (req, res) => {
         appointment_date,
         appointment_time
       };
-      const displayName = `${user.first_name} ${user.last_name}${user.middle_name ? ' ' + user.middle_name.charAt(0).toUpperCase() + '.' : ''}`;
+      const displayName = `${user.first_name}${user.middle_name ? ' ' + user.middle_name.charAt(0).toUpperCase() + '.' : ''} ${user.last_name}`;
       sendAppointmentConfirmation(user.email, displayName, appointmentData).catch(err =>
         console.error('Failed to send appointment confirmation:', err.message)
       );
@@ -162,7 +162,7 @@ router.put('/:id/status', verifyToken, async (req, res) => {
         notes: notes
       };
       console.log(`Sending status update email for appointment ${id}: ${oldStatus} -> ${status} to ${currentAppointment.email}`);
-      const nameForStatus = `${currentAppointment.first_name} ${currentAppointment.last_name}${currentAppointment.middle_name ? ' ' + currentAppointment.middle_name.charAt(0).toUpperCase() + '.' : ''}`;
+      const nameForStatus = `${currentAppointment.first_name}${currentAppointment.middle_name ? ' ' + currentAppointment.middle_name.charAt(0).toUpperCase() + '.' : ''} ${currentAppointment.last_name}`;
       sendStatusUpdate(
         currentAppointment.email,
         nameForStatus,

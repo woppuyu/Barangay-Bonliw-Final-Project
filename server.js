@@ -7,6 +7,7 @@ const db = require('./database/db');
 const authRoutes = require('./routes/auth');
 const appointmentRoutes = require('./routes/appointments');
 const notificationRoutes = require('./routes/notifications');
+const statsRoutes = require('./routes/stats');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,6 +22,7 @@ app.use(express.static('public'));
 app.use('/api/auth', authRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/stats', statsRoutes);
 
 // Serve HTML pages
 app.get('/', (req, res) => {
@@ -45,6 +47,10 @@ app.get('/settings', (req, res) => {
 
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+app.get('/admin-stats', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin-stats.html'));
 });
 
 app.get('/manage-users', (req, res) => {

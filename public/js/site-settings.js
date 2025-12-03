@@ -11,7 +11,7 @@
   const darkModeToggle = document.getElementById('darkModeToggle');
   const timeFormatToggle = document.getElementById('timeFormatToggle');
 
-  if (!darkModeToggle || !timeFormatToggle) return;
+  if (!darkModeToggle) return;
 
   // Load saved dark mode preference
   const isDarkMode = localStorage.getItem('darkMode') === 'true';
@@ -21,9 +21,11 @@
   }
 
   // Load saved time format preference (default: 12-hour)
-  const is24Hour = localStorage.getItem('timeFormat') === '24';
-  if (is24Hour) {
-    timeFormatToggle.checked = true;
+  if (timeFormatToggle) {
+    const is24Hour = localStorage.getItem('timeFormat') === '24';
+    if (is24Hour) {
+      timeFormatToggle.checked = true;
+    }
   }
 
   // Toggle dropdown functions
@@ -82,15 +84,17 @@
   });
 
   // Time format toggle
-  timeFormatToggle.addEventListener('change', () => {
-    if (timeFormatToggle.checked) {
-      localStorage.setItem('timeFormat', '24');
-    } else {
-      localStorage.setItem('timeFormat', '12');
-    }
-    // Trigger a custom event so other scripts can update time displays
-    window.dispatchEvent(new Event('timeFormatChanged'));
-  });
+  if (timeFormatToggle) {
+    timeFormatToggle.addEventListener('change', () => {
+      if (timeFormatToggle.checked) {
+        localStorage.setItem('timeFormat', '24');
+      } else {
+        localStorage.setItem('timeFormat', '12');
+      }
+      // Trigger a custom event so other scripts can update time displays
+      window.dispatchEvent(new Event('timeFormatChanged'));
+    });
+  }
 
   // Prevent dropdowns from closing when clicking inside
   if (siteSettingsDropdown) {

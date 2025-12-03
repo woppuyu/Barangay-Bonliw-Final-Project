@@ -17,7 +17,7 @@ router.get('/', authenticateToken, async (req, res) => {
       notifications = [
         ...newUsers.rows.map(u => {
           const mi = u.middle_name ? u.middle_name.charAt(0).toUpperCase() + '.' : '';
-          return { type: 'user', text: `New user registered: ${u.first_name} ${u.last_name}${mi ? ' ' + mi : ''}` };
+          return { type: 'user', text: `New user registered: ${u.first_name}${mi ? ' ' + mi : ''} ${u.last_name}` };
         }),
         ...newAppointments.rows.map(a => {
           const mi = a.middle_name ? a.middle_name.charAt(0).toUpperCase() + '.' : '';

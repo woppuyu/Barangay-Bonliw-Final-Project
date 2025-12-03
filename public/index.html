@@ -3,17 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Barangay Bonliw Appointment System</title>
+  <title>Barangay Bonliw</title>
   <link rel="stylesheet" href="/css/style.css">
   <script src="/js/toast.js"></script>
   <script src="/js/password-toggle.js"></script>
 </head>
 <body>
-  <div class="hero">
-    <div class="container">
-      <h1>Barangay Bonliw Appointment System</h1>
-      <p>Skip the long lines and multiple trips to the barangay hall. Book your appointment online, check required documents beforehand, and simply arrive at your scheduled time. Fast, easy, and convenient for both residents and barangay officials.</p>
-      <div style="display: flex; gap: 12px; justify-content: center; margin-top: 32px;">
+  <div class="homepage-hero">
+    <div class="hero-image-container">
+      <img src="/images/bonliw-brgy-hall.jpg" alt="Barangay Bonliw Hall" class="hero-image">
+      <div class="hero-gradient-overlay"></div>
+    </div>
+    <div class="hero-content">
+      <div class="brgy-logo-container">
+        <img src="/images/brgy-bonliw-logo.png" alt="Barangay Bonliw Logo" class="brgy-logo">
+      </div>
+      <h1>Barangay Bonliw</h1>
+      <div class="barangay-info">
+        <p>Welcome to Barangay Bonliw, a vibrant community located in the heart of our municipality. Our barangay is committed to serving our residents with dedication, transparency, and excellence.</p>
+        <p>Barangay Bonliw is home to diverse families and thriving local businesses. We pride ourselves on maintaining a safe, clean, and progressive environment for all our constituents.</p>
+        <h3>Our Mission</h3>
+        <p>To provide efficient and accessible public services while fostering unity, development, and peace within our community.</p>
+        <h3>Contact Information</h3>
+        <p><strong>Address:</strong> Barangay Bonliw, Municipality<br>
+        <strong>Office Hours:</strong> Monday - Friday, 7:00 AM - 5:00 PM<br>
+        <strong>Contact Number:</strong> (XXX) XXX-XXXX</p>
+      </div>
+      <div style="margin-top: 32px;">
         <button class="btn btn-primary" id="openAuthModal">Get Started</button>
       </div>
     </div>
@@ -181,7 +197,6 @@
         registerViewport.style.display = 'none';
         modalTitle.textContent = 'Login';
         messageDiv.innerHTML = '';
-        localStorage.setItem('lastAuthMode', 'login');
       }
 
       function showRegister() {
@@ -193,16 +208,11 @@
         modalTitle.textContent = 'Register Account';
         messageDiv.innerHTML = '';
         clearRegisterErrors();
-        localStorage.setItem('lastAuthMode', 'register');
       }
 
       function openModal(mode = 'login') {
-        const lastMode = localStorage.getItem('lastAuthMode') || mode;
-        if (lastMode === 'register') {
-          showRegister();
-        } else {
-          showLogin();
-        }
+        // Always show login first
+        showLogin();
         modal.classList.add('active');
         document.body.classList.add('modal-open');
       }
@@ -575,38 +585,7 @@
     })();
   </script>
 
-  <div class="container">
-    <div class="features">
-      <div class="feature-card">
-        <h3>📅 Schedule Appointments</h3>
-        <p>Book appointments at your convenience without waiting in line.</p>
-      </div>
-      <div class="feature-card">
-        <h3>📄 Request Documents</h3>
-        <p>Request Barangay Certificates, Clearance, Indigency forms, and more.</p>
-      </div>
-      <div class="feature-card">
-        <h3>📊 Track Status</h3>
-        <p>Monitor your request status in real-time through your dashboard.</p>
-      </div>
-      <div class="feature-card">
-        <h3>🔔 Get Updates</h3>
-        <p>Receive notifications when your documents are ready for pickup.</p>
-      </div>
-    </div>
 
-    <div class="card" style="margin-top: 48px;">
-      <h2>Available Services</h2>
-      <ul style="line-height: 2; color: #4a5568; list-style: none; padding-left: 0;">
-        <li style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">✓ Barangay Clearance</li>
-        <li style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">✓ Certificate of Residency</li>
-        <li style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">✓ Certificate of Relationship</li>
-        <li style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">✓ Certificate of Indigency</li>
-        <li style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">✓ Others (Specify)</li>
-        <li style="padding: 8px 0;">✓ Other Barangay Services</li>
-      </ul>
-    </div>
-  </div>
 
   <!-- Floating Site Settings Button -->
   <button id="floatingSiteSettingsBtn" class="floating-settings-btn" aria-label="Site Settings">
@@ -619,13 +598,6 @@
       <label class="toggle-label">
         <span>Dark Mode</span>
         <input type="checkbox" id="darkModeToggle" class="toggle-checkbox">
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-    <div class="settings-item">
-      <label class="toggle-label">
-        <span>24-Hour Time</span>
-        <input type="checkbox" id="timeFormatToggle" class="toggle-checkbox">
         <span class="toggle-slider"></span>
       </label>
     </div>

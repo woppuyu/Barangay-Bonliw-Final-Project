@@ -13,7 +13,7 @@ if (user.role !== 'admin') {
 // Display user info
 function formatUserName(u) {
   const mi = u.middle_name ? u.middle_name.charAt(0).toUpperCase() + '.' : '';
-  return `${u.first_name} ${u.last_name}${mi ? ' ' + mi : ''}`;
+  return `${u.first_name}${mi ? ' ' + mi : ''} ${u.last_name}`;
 }
 document.getElementById('userInfo').textContent = `Welcome, ${formatUserName(user)}`;
 document.getElementById('sidebarUserName').textContent = formatUserName(user);

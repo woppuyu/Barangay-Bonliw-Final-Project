@@ -9,7 +9,7 @@ if (!token || !user || user.role !== 'admin') {
 // Display user info
 function formatUserName(u) {
   const mi = u.middle_name ? u.middle_name.charAt(0).toUpperCase() + '.' : '';
-  return `${u.first_name} ${u.last_name}${mi ? ' ' + mi : ''}`;
+  return `${u.first_name}${mi ? ' ' + mi : ''} ${u.last_name}`;
 }
 document.getElementById('userInfo').textContent = `Admin: ${formatUserName(user)}`;
 document.getElementById('sidebarUserName').textContent = formatUserName(user);
@@ -294,9 +294,9 @@ function addDays(d, n) {
 }
 
 const HALF_HOUR_SLOTS = [];
-for (let h=7; h<=19; h++) { // 7AM to 7PM inclusive rows (last row 7PM)
+for (let h=7; h<=16; h++) { // 7AM to 4:30PM
   HALF_HOUR_SLOTS.push(`${String(h).padStart(2,'0')}:00:00`);
-  if (h < 19) HALF_HOUR_SLOTS.push(`${String(h).padStart(2,'0')}:30:00`);
+  HALF_HOUR_SLOTS.push(`${String(h).padStart(2,'0')}:30:00`);
 }
 
 function renderLegend() {
@@ -403,7 +403,9 @@ function renderWeeklyCalendar() {
       const block = document.createElement('div');
       block.className = `appointment-block ${a.status}`;
       const displayTime = formatTime(a.appointment_time.substring(0,5));
-      block.innerHTML = `<div style='font-weight:600;'>${a.document_type}</div><div>${displayTime}</div><div style='font-size:10px;'>${a.first_name} ${a.last_name}</div>`;
+      const mi = a.middle_name ? a.middle_name.charAt(0).toUpperCase() + '.' : '';
+      const userName = `${a.first_name}${mi ? ' ' + mi : ''} ${a.last_name}`;
+      block.innerHTML = `<div style='font-weight:600;'>${a.document_type}</div><div>${displayTime}</div><div style='font-size:10px;'>${userName}</div>`;
       block.style.top = `${HEADER_HEIGHT + slotIndex * SLOT_HEIGHT + 1}px`;
       block.style.height = `${durationSlots * SLOT_HEIGHT - 4}px`;
       dayCol.appendChild(block);

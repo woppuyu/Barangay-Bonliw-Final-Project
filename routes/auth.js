@@ -136,7 +136,7 @@ router.post('/register-initiate', async (req, res) => {
     if (isValidEmail(contact)) {
       const code = generateVerificationCode();
       // Send email code
-      await sendVerificationCode(contact, `${first_name} ${last_name}${middle_name ? ' ' + middle_name.charAt(0).toUpperCase() + '.' : ''}`, code);
+      await sendVerificationCode(contact, `${first_name}${middle_name ? ' ' + middle_name.charAt(0).toUpperCase() + '.' : ''} ${last_name}`, code);
 
       // Build short-lived registration token including hashed password
       const passwordHash = bcrypt.hashSync(password, 10);
@@ -335,7 +335,7 @@ router.post('/send-email-verification', verifyToken, async (req, res) => {
     const userResult = await pool.query('SELECT first_name, last_name, middle_name FROM users WHERE id = $1', [req.userId]);
     const u = userResult.rows[0] || {};
     const displayName = u.first_name && u.last_name
-      ? `${u.first_name} ${u.last_name}${u.middle_name ? ' ' + u.middle_name.charAt(0).toUpperCase() + '.' : ''}`
+      ? `${u.first_name}${u.middle_name ? ' ' + u.middle_name.charAt(0).toUpperCase() + '.' : ''} ${u.last_name}`
       : 'User';
 
     // Send verification code via email
@@ -488,7 +488,7 @@ router.put('/users/:id/approve', verifyToken, async (req, res) => {
     // Send welcome email upon approval if email exists
     if (updated.email) {
       const welcomeName = updated.first_name && updated.last_name
-        ? `${updated.first_name} ${updated.last_name}${updated.middle_name ? ' ' + updated.middle_name.charAt(0).toUpperCase() + '.' : ''}`
+        ? `${updated.first_name}${updated.middle_name ? ' ' + updated.middle_name.charAt(0).toUpperCase() + '.' : ''} ${updated.last_name}`
         : 'Resident';
       sendWelcomeEmail(updated.email, welcomeName).catch(err =>
         console.error('Failed to send welcome email:', err.message)

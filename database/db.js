@@ -68,10 +68,11 @@ async function createSchema() {
       CREATE TABLE IF NOT EXISTS appointments (
         id SERIAL PRIMARY KEY,
         user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        document_type VARCHAR(64) NOT NULL,
+        service_category VARCHAR(64) NOT NULL,
+        document_type VARCHAR(64),
+        purpose TEXT,
         appointment_date DATE NOT NULL,
         appointment_time TIME NOT NULL,
-        purpose TEXT,
         status VARCHAR(16) NOT NULL DEFAULT 'pending',
         notes TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -80,6 +81,8 @@ async function createSchema() {
       CREATE INDEX IF NOT EXISTS idx_appts_user ON appointments(user_id);
       CREATE INDEX IF NOT EXISTS idx_appts_status ON appointments(status);
       CREATE INDEX IF NOT EXISTS idx_appts_datetime ON appointments(appointment_date, appointment_time);
+      CREATE INDEX IF NOT EXISTS idx_appts_service ON appointments(service_category);
+      CREATE INDEX IF NOT EXISTS idx_appts_created ON appointments(created_at DESC);
     `);
 
     await client.query(`
@@ -108,7 +111,7 @@ async function createSchema() {
 
 async function seedDefaults() {
   // Create default admin (always approved)
-  const hash = bcrypt.hashSync('admin123', 10);
+  const hash = bcrypt.hashSync('admin', 10);
   await pool.query(
     `INSERT INTO users (username, password, first_name, last_name, middle_name, role, approved)
      VALUES ($1,$2,$3,$4,$5,$6,$7)

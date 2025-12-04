@@ -68,6 +68,15 @@ async function loadAppointments() {
     });
 
     const appointments = await response.json();
+    
+    // Ensure appointments are sorted by created_at descending (most recently booked first)
+    appointments.sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at) : new Date(0);
+      const dateB = b.created_at ? new Date(b.created_at) : new Date(0);
+      if (dateB - dateA !== 0) return dateB - dateA;
+      return (b.id || 0) - (a.id || 0);
+    });
+    
     window.appointmentsList = appointments; // cache for rescheduling
 
     if (appointments.length === 0) {

@@ -79,8 +79,7 @@ console.log('PGHOST:', process.env.PGHOST);
 db.initialize().then(() => {
   console.log('Database initialized successfully');
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Health check: http://localhost:${PORT}/health`);
+    console.log(`Server running on http://localhost:${PORT}`);
   });
 }).catch(err => {
   console.error('Failed to initialize database:', err);

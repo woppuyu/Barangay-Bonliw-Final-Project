@@ -8,3 +8,4 @@ PROJECT_MEMORY.txt
 start-tunnel.bat
 # Ignore all SQL seed/generation files
 database/*.sql
+seed.js

@@ -60,8 +60,9 @@
     </div>
     <div class="sidebar-body">
       <ul class="sidebar-menu">
-        <li><a href="#" id="myAppointmentsLink">My Appointments</a></li>
-        <li><a href="#" id="bookAppointmentLink">Book Appointment</a></li>
+        <li><a href="/dashboard" id="servicesLink" class="active">Services</a></li>
+        <li><a href="/my-appointments" id="myAppointmentsLink">My Appointments</a></li>
+        <li><a href="/book-appointment" id="bookAppointmentLink">Book Appointment</a></li>
         <li><a href="/settings">Settings</a></li>
         <li><button id="logoutBtn" class="logout">Logout</button></li>
       </ul>
@@ -71,68 +72,108 @@
   <div class="container">
     <div id="message"></div>
     
-    <!-- Book Appointment Panel -->
-    <div class="card" id="bookAppointmentPanel" style="display: none;">
-      <h2>Book New Appointment</h2>
-      <form id="appointmentForm" novalidate>
-        <div class="form-group">
-          <label for="document_type">Document Type *</label>
-          <select id="document_type" name="document_type" required>
-            <option value="">Select document type</option>
-            <option value="Barangay Clearance">Barangay Clearance</option>
-            <option value="Certificate of Residency">Certificate of Residency</option>
-            <option value="Certificate of Relationship">Certificate of Relationship</option>
-            <option value="Certificate of Indigency">Certificate of Indigency</option>
-            <option value="Others">Others</option>
-          </select>
-          <div class="field-error" id="error_document_type"></div>
+    <!-- Services Page -->
+    <div class="card" id="servicesPanel">
+      <h2>Barangay Services</h2>
+      <p style="color: #4a5568; margin-bottom: 24px;">Welcome! Here are the services available at our barangay. Book an appointment to get started.</p>
+      
+      <div style="display: grid; gap: 20px;">
+        <!-- Document Request -->
+        <div class="service-item">
+          <h3 style="color: #2d3748; font-size: 1.1rem; margin-bottom: 8px;">📄 Document Request</h3>
+          <p style="color: #4a5568; margin-bottom: 12px;">Apply for barangay certificates, clearances, permits, and IDs.</p>
+          <div style="background: #f7fafc; padding: 12px; border-radius: 8px; margin-bottom: 8px;">
+            <strong style="color: #2d3748;">Available Documents:</strong>
+            <ul style="margin: 8px 0 0 20px; color: #4a5568;">
+              <li>Barangay Clearance (₱50)</li>
+              <li>Certificate of Residency (₱30)</li>
+              <li>Certificate of Indigency (FREE)</li>
+              <li>Certificate of Relationship (₱30)</li>
+              <li>Business Permit (Varies)</li>
+              <li>Barangay ID (₱100)</li>
+            </ul>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="purpose">Purpose (optional)</label>
-          <textarea id="purpose" name="purpose" rows="3" placeholder="Brief description of why you need this document"></textarea>
-        </div>
-        <div class="form-group">
-          <label for="appointment_date">Appointment Date *</label>
-          <input type="date" id="appointment_date" name="appointment_date" required>
-          <div class="field-error" id="error_appointment_date"></div>
-        </div>
-        <div class="form-group">
-          <label for="appointment_time">Appointment Time *</label>
-          <select id="appointment_time" name="appointment_time" required>
-            <option value="">Select a date first</option>
-          </select>
-          <div class="field-error" id="error_appointment_time"></div>
-        </div>
-        <button type="submit" class="btn btn-primary">Book Appointment</button>
-      </form>
-    </div>
 
-    <!-- My Appointments Panel -->
-    <div class="card" id="myAppointmentsPanel">
-      <h2>My Appointments</h2>
-      <div style="margin-bottom:16px; display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
-        <div style="display:flex; gap:8px;">
-          <button id="userTableViewBtn" class="btn btn-primary" style="padding:6px 14px;">Table View</button>
-          <button id="userWeekViewBtn" class="btn btn-secondary" style="padding:6px 14px;">Week View</button>
+        <!-- Payment of Fees -->
+        <div class="service-item">
+          <h3 style="color: #2d3748; font-size: 1.1rem; margin-bottom: 8px;">💰 Payment of Local Fees</h3>
+          <p style="color: #4a5568; margin-bottom: 12px;">Pay barangay permits, business fees, community tax, and other local charges.</p>
+          <div style="background: #f7fafc; padding: 12px; border-radius: 8px; margin-bottom: 8px;">
+            <strong style="color: #2d3748;">Payment Services:</strong>
+            <ul style="margin: 8px 0 0 20px; color: #4a5568;">
+              <li>Community Tax Certificate (Cedula)</li>
+              <li>Business Permit Renewal</li>
+              <li>Barangay Fees and Permits</li>
+              <li>Other Local Assessments</li>
+            </ul>
+          </div>
         </div>
-        <div style="margin-left:auto; display:flex; gap:8px; align-items:center;" id="userWeekNav" hidden>
-          <button id="userPrevWeekBtn" class="btn btn-secondary" style="padding:6px 10px;">◀</button>
-          <button id="userThisWeekBtn" class="btn btn-secondary" style="padding:6px 10px;">This Week</button>
-          <button id="userNextWeekBtn" class="btn btn-secondary" style="padding:6px 10px;">▶</button>
+
+        <!-- Report Issue -->
+        <div class="service-item">
+          <h3 style="color: #2d3748; font-size: 1.1rem; margin-bottom: 8px;">⚠️ Report Local Issue</h3>
+          <p style="color: #4a5568; margin-bottom: 12px;">File complaints, report concerns, or document incidents within the barangay.</p>
+          <div style="background: #f7fafc; padding: 12px; border-radius: 8px; margin-bottom: 8px;">
+            <strong style="color: #2d3748;">Types of Reports:</strong>
+            <ul style="margin: 8px 0 0 20px; color: #4a5568;">
+              <li>Neighborhood disputes</li>
+              <li>Noise complaints</li>
+              <li>Public safety concerns</li>
+              <li>Infrastructure issues</li>
+              <li>Blotter reports</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Facility Request -->
+        <div class="service-item">
+          <h3 style="color: #2d3748; font-size: 1.1rem; margin-bottom: 8px;">🏢 Facility Request</h3>
+          <p style="color: #4a5568; margin-bottom: 12px;">Request to use barangay facilities, equipment, or venue for events and activities.</p>
+          <div style="background: #f7fafc; padding: 12px; border-radius: 8px; margin-bottom: 8px;">
+            <strong style="color: #2d3748;">Available Facilities:</strong>
+            <ul style="margin: 8px 0 0 20px; color: #4a5568;">
+              <li>Barangay Hall</li>
+              <li>Multi-purpose Court</li>
+              <li>Sound System and Equipment</li>
+              <li>Tables and Chairs</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- General Inquiry -->
+        <div class="service-item">
+          <h3 style="color: #2d3748; font-size: 1.1rem; margin-bottom: 8px;">❓ General Inquiry</h3>
+          <p style="color: #4a5568; margin-bottom: 12px;">Ask questions, seek information, or consult with barangay officials.</p>
+          <div style="background: #f7fafc; padding: 12px; border-radius: 8px; margin-bottom: 8px;">
+            <strong style="color: #2d3748;">Inquiry Topics:</strong>
+            <ul style="margin: 8px 0 0 20px; color: #4a5568;">
+              <li>Barangay programs and services</li>
+              <li>Local ordinances and policies</li>
+              <li>Community projects</li>
+              <li>General assistance</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Other Services -->
+        <div class="service-item">
+          <h3 style="color: #2d3748; font-size: 1.1rem; margin-bottom: 8px;">📋 Other Services</h3>
+          <p style="color: #4a5568; margin-bottom: 12px;">For other barangay-related matters not listed above.</p>
+          <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+            <strong style="color: #2d3748;">Note:</strong>
+            <p style="margin: 8px 0 0 0; color: #4a5568;">Please specify your concern when booking your appointment.</p>
+          </div>
         </div>
       </div>
-      <div id="appointmentsContainer">
-        <div class="loading">
-          <div class="spinner"></div>
-          <p>Loading your appointments...</p>
-        </div>
+
+      <div style="background: #fffbea; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 8px; margin-top: 24px;">
+        <strong style="color: #92400e;">⏰ Office Hours:</strong>
+        <p style="color: #92400e; margin: 4px 0 0 0;">Monday - Friday, 7:00 AM - 5:00 PM</p>
       </div>
-      <div id="userWeeklyCalendarContainer" style="display:none;">
-        <div class="weekly-calendar-header">
-          <h3 id="userCalendarMonthLabel"></h3>
-        </div>
-        <div id="userWeeklyCalendar" class="weekly-calendar"></div>
-        <div id="userCalendarLegend" class="calendar-legend"></div>
+
+      <div style="margin-top: 24px; text-align: center;">
+        <a href="/book-appointment" class="btn btn-primary" style="padding: 14px 32px; font-size: 16px; text-decoration: none; display: inline-block;">Book an Appointment</a>
       </div>
     </div>
   </div>
@@ -141,7 +182,6 @@
   <script src="/js/toast.js"></script>
   <script src="/js/time-utils.js"></script>
   <script src="/js/site-settings.js"></script>
-  <script src="/js/sidebar-active.js"></script>
-  <script src="/js/dashboard.js"></script>
+  <script src="/js/dashboard-simple.js"></script>
 </body>
 </html>

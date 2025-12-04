@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Book Appointment - Barangay Bonliw</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <button class="burger-toggle" id="burgerToggle" aria-label="Menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <h1>Barangay Bonliw Appointment System</h1>
+      </div>
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <div class="notification-area">
+          <button id="notifBell" class="notif-bell" aria-label="Notifications">
+            <span class="bell-icon"></span>
+            <span id="notifCount" class="notif-count" style="display:none;">0</span>
+          </button>
+          <div id="notifDropdown" class="notif-dropdown" style="display:none;"></div>
+        </div>
+        <div class="site-settings-area">
+          <button id="siteSettingsBtn" class="site-settings-btn" aria-label="Site Settings">
+            <span class="settings-icon"></span>
+          </button>
+          <div id="siteSettingsDropdown" class="site-settings-dropdown" style="display:none;">
+            <div class="settings-item">
+              <label class="toggle-label">
+                <span>Dark Mode</span>
+                <input type="checkbox" id="darkModeToggle" class="toggle-checkbox">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="settings-item">
+              <label class="toggle-label">
+                <span>24-Hour Time</span>
+                <input type="checkbox" id="timeFormatToggle" class="toggle-checkbox">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="user-info" id="userInfo"></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <nav class="sidebar-nav" id="sidebarNav">
+    <div class="sidebar-header">
+      <h3 id="sidebarUserName"></h3>
+      <p>Resident Dashboard</p>
+    </div>
+    <div class="sidebar-body">
+      <ul class="sidebar-menu">
+        <li><a href="/dashboard" id="servicesLink">Services</a></li>
+        <li><a href="/my-appointments" id="myAppointmentsLink">My Appointments</a></li>
+        <li><a href="/book-appointment" id="bookAppointmentLink" class="active">Book Appointment</a></li>
+        <li><a href="/settings">Settings</a></li>
+        <li><button id="logoutBtn" class="logout">Logout</button></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div id="message"></div>
+    <!-- Book Appointment (Step-by-step) -->
+    <div class="card" id="bookAppointmentPanel">
+      <h2>Book New Appointment</h2>
+
+      <div id="bookingStep1" style="display:block;">
+        <h3 style="margin-bottom: 16px;">Step 1: Select Appointment Date</h3>
+        <div class="form-group">
+          <label for="appointment_date_step1">Choose a date for your appointment *</label>
+          <input type="date" id="appointment_date_step1" name="appointment_date" required style="font-size: 16px; padding: 14px;">
+          <div class="field-error" id="error_date_step1"></div>
+        </div>
+        <button type="button" class="btn btn-primary" id="nextToServiceBtn">Next: Select Service</button>
+      </div>
+
+      <div id="bookingStep2" style="display:none;">
+        <h3 style="margin-bottom: 16px;">Step 2: Select Service Type</h3>
+        <p style="color: #4a5568; margin-bottom: 20px;">Appointment Date: <strong id="selectedDateDisplay"></strong></p>
+        <div style="display: grid; gap: 12px; margin-bottom: 24px;">
+          <label class="service-option">
+            <input type="radio" name="service_category" value="Document Request" required>
+            <div class="service-option-content">
+              <strong>📄 Document Request</strong>
+              <span>Barangay Clearance, Certificates, IDs</span>
+            </div>
+          </label>
+          <label class="service-option">
+            <input type="radio" name="service_category" value="Payment of Fees" required>
+            <div class="service-option-content">
+              <strong>💰 Payment of Local Fees</strong>
+              <span>Permits, Business fees, Community tax</span>
+            </div>
+          </label>
+          <label class="service-option">
+            <input type="radio" name="service_category" value="Report Issue" required>
+            <div class="service-option-content">
+              <strong>⚠️ Report Local Issue</strong>
+              <span>Complaints, concerns, incidents</span>
+            </div>
+          </label>
+          <label class="service-option">
+            <input type="radio" name="service_category" value="Facility Request" required>
+            <div class="service-option-content">
+              <strong>🏢 Facility Request</strong>
+              <span>Use of barangay hall, equipment, venue</span>
+            </div>
+          </label>
+          <label class="service-option">
+            <input type="radio" name="service_category" value="General Inquiry" required>
+            <div class="service-option-content">
+              <strong>❓ General Inquiry</strong>
+              <span>Questions, consultations, information</span>
+            </div>
+          </label>
+          <label class="service-option">
+            <input type="radio" name="service_category" value="Other Services" required>
+            <div class="service-option-content">
+              <strong>📋 Other Services</strong>
+              <span>Other barangay-related matters</span>
+            </div>
+          </label>
+        </div>
+        <div class="field-error" id="error_service_category"></div>
+        <div style="display:flex;gap:12px;">
+          <button type="button" class="btn btn-secondary" id="backToDateBtn">Back</button>
+          <button type="button" class="btn btn-primary" id="nextToPurposeBtn">Next: Provide Details</button>
+        </div>
+      </div>
+
+      <div id="bookingStep3" style="display:none;">
+        <h3 style="margin-bottom: 16px;">Step 3: Provide Purpose and Details</h3>
+        <p style="color: #4a5568; margin-bottom: 12px;">
+          Appointment Date: <strong id="selectedDateDisplay2"></strong><br>
+          Service Type: <strong id="selectedServiceDisplay"></strong>
+        </p>
+        <div id="documentTypeGroup" style="display:none;">
+          <div class="form-group">
+            <label for="document_type">Document Type *</label>
+            <select id="document_type" name="document_type">
+              <option value="">Select document type</option>
+              <option value="Barangay Clearance">Barangay Clearance</option>
+              <option value="Certificate of Residency">Certificate of Residency</option>
+              <option value="Certificate of Relationship">Certificate of Relationship</option>
+              <option value="Certificate of Indigency">Certificate of Indigency</option>
+              <option value="Business Permit">Business Permit</option>
+              <option value="Barangay ID">Barangay ID</option>
+              <option value="Others">Others (specify in purpose)</option>
+            </select>
+            <div class="field-error" id="error_document_type"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="purpose">Purpose / Details *</label>
+          <textarea id="purpose" name="purpose" rows="4" placeholder="Please provide detailed information about your appointment purpose..." required></textarea>
+          <div class="field-error" id="error_purpose"></div>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <button type="button" class="btn btn-secondary" id="backToServiceBtn">Back</button>
+          <button type="button" class="btn btn-primary" id="nextToTimeBtn">Next: Select Time</button>
+        </div>
+      </div>
+
+      <div id="bookingStep4" style="display:none;">
+        <h3 style="margin-bottom: 16px;">Step 4: Select Appointment Time</h3>
+        <p style="color: #4a5568; margin-bottom: 12px;">
+          Date: <strong id="selectedDateDisplay3"></strong><br>
+          Service: <strong id="selectedServiceDisplay2"></strong>
+        </p>
+        <div class="form-group">
+          <label for="appointment_time">Select Time Slot *</label>
+          <select id="appointment_time" name="appointment_time" required>
+            <option value="">Loading available times...</option>
+          </select>
+          <div class="field-error" id="error_appointment_time"></div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:24px;">
+          <button type="button" class="btn btn-secondary" id="backToPurposeBtn">Back</button>
+          <button type="submit" class="btn btn-primary" id="submitAppointmentBtn">Confirm Appointment</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/toast.js"></script>
+  <script src="/js/modal-utils.js"></script>
+  <script src="/js/site-settings.js"></script>
+  <script src="/js/dashboard-book.js"></script>
+</body>
+</html>

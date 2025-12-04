@@ -44,8 +44,9 @@ if (isAdmin) {
   `;
 } else {
   sidebarMenu.innerHTML = `
-    <li><a href="/dashboard">My Appointments</a></li>
-    <li><a href="/dashboard#book">Book Appointment</a></li>
+    <li><a href="/dashboard">Services</a></li>
+    <li><a href="/my-appointments">My Appointments</a></li>
+    <li><a href="/book-appointment">Book Appointment</a></li>
     <li><a href="/settings">Settings</a></li>
     <li><button id="logoutBtn" class="logout">Logout</button></li>
   `;

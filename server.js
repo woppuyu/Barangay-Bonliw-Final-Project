@@ -37,6 +37,14 @@ app.get('/dashboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
+app.get('/my-appointments', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'my-appointments.html'));
+});
+
+app.get('/book-appointment', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'book-appointment.html'));
+});
+
 app.get('/pending-approval', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'pending-approval.html'));
 });

@@ -137,7 +137,6 @@ fetchNotifications();
 // Re-render notifications when time format changes
 window.addEventListener('timeFormatChanged', () => {
   renderNotifications();
-  loadAppointments(); // Reload appointments to update time display
 });
 
 function openSidebar() {
@@ -168,14 +167,14 @@ if (sidebarOverlay) {
   sidebarOverlay.addEventListener('click', closeSidebar);
 }
 
-// Panel navigation (define after closeSidebar)
-const bookAppointmentPanel = document.getElementById('bookAppointmentPanel');
-const myAppointmentsPanel = document.getElementById('myAppointmentsPanel');
-const bookAppointmentLink = document.getElementById('bookAppointmentLink');
-const myAppointmentsLink = document.getElementById('myAppointmentsLink');
-// --- Appointment Date/Time Restrictions ---
-const appointmentDateInput = document.getElementById('appointment_date');
-const appointmentTimeSelect = document.getElementById('appointment_time');
+// Logout functionality
+document.getElementById('logoutBtn').addEventListener('click', (e) => {
+  e.preventDefault();
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  sessionStorage.clear();
+  window.location.href = '/';
+});
 
 function getMinBookingDateTime() {
   const now = new Date();
@@ -216,23 +215,48 @@ function formatDate(value) {
 }
 
 function showBookAppointment() {
+  const servicesPanel = document.getElementById('servicesPanel');
+  if (servicesPanel) servicesPanel.style.display = 'none';
   bookAppointmentPanel.style.display = 'block';
   myAppointmentsPanel.style.display = 'none';
+  
+  // Reset to step 1 and clear all data
+  showBookingStep(1);
+  
   closeSidebar();
   // Update active menu item
+  const servicesLink = document.getElementById('servicesLink');
+  if (servicesLink) servicesLink.classList.remove('active');
   if (bookAppointmentLink) bookAppointmentLink.classList.add('active');
   if (myAppointmentsLink) myAppointmentsLink.classList.remove('active');
 }
 
 function showMyAppointments() {
+  const servicesPanel = document.getElementById('servicesPanel');
+  if (servicesPanel) servicesPanel.style.display = 'none';
   bookAppointmentPanel.style.display = 'none';
   myAppointmentsPanel.style.display = 'block';
   closeSidebar();
   // Restore view preference when switching back to appointments
   restoreUserViewPreference();
   // Update active menu item
+  const servicesLink = document.getElementById('servicesLink');
+  if (servicesLink) servicesLink.classList.remove('active');
   if (myAppointmentsLink) myAppointmentsLink.classList.add('active');
   if (bookAppointmentLink) bookAppointmentLink.classList.remove('active');
+}
+
+function showServices() {
+  const servicesPanel = document.getElementById('servicesPanel');
+  if (servicesPanel) servicesPanel.style.display = 'block';
+  bookAppointmentPanel.style.display = 'none';
+  myAppointmentsPanel.style.display = 'none';
+  closeSidebar();
+  // Update active menu item
+  const servicesLink = document.getElementById('servicesLink');
+  if (servicesLink) servicesLink.classList.add('active');
+  if (bookAppointmentLink) bookAppointmentLink.classList.remove('active');
+  if (myAppointmentsLink) myAppointmentsLink.classList.remove('active');
 }
 
 if (bookAppointmentLink) {
@@ -249,11 +273,30 @@ if (myAppointmentsLink) {
   });
 }
 
+const servicesLink = document.getElementById('servicesLink');
+if (servicesLink) {
+  servicesLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    showServices();
+  });
+}
+
+const goToBookingBtn = document.getElementById('goToBookingBtn');
+if (goToBookingBtn) {
+  goToBookingBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    showBookAppointment();
+  });
+}
+
 // Default view based on hash: #book to open booking panel
 if (window.location.hash === '#book') {
   showBookAppointment();
-} else {
+} else if (window.location.hash === '#appointments') {
   showMyAppointments();
+} else {
+  // Default: show services panel
+  showServices();
 }
 
 // Logout functionality
@@ -265,6 +308,276 @@ document.getElementById('logoutBtn').addEventListener('click', (e) => {
   window.location.href = '/';
 });
 
+// Booking state management
+let bookingData = {
+  appointment_date: '',
+  service_category: '',
+  document_type: '',
+  purpose: '',
+  appointment_time: ''
+};
+
+// Step navigation functions
+function showBookingStep(step) {
+  // Hide all steps
+  for (let i = 1; i <= 4; i++) {
+    const stepEl = document.getElementById(`bookingStep${i}`);
+    if (stepEl) stepEl.style.display = 'none';
+  }
+  // Show current step
+  const currentStep = document.getElementById(`bookingStep${step}`);
+  if (currentStep) currentStep.style.display = 'block';
+}
+
+// Step 1: Date selection
+const dateInput = document.getElementById('appointment_date_step1');
+const nextToServiceBtn = document.getElementById('nextToServiceBtn');
+
+if (dateInput && nextToServiceBtn) {
+  // Set minimum date (2 days from now at 7 AM)
+  const minDate = getMinBookingDateTime();
+  dateInput.min = formatDateYYYYMMDD(minDate);
+  
+  nextToServiceBtn.addEventListener('click', () => {
+    const errorDiv = document.getElementById('error_date_step1');
+    if (!dateInput.value) {
+      errorDiv.textContent = 'Please select a date';
+      return;
+    }
+    errorDiv.textContent = '';
+    bookingData.appointment_date = dateInput.value;
+    
+    // Display selected date in step 2
+    const selectedDateDisplay = document.getElementById('selectedDateDisplay');
+    if (selectedDateDisplay) {
+      selectedDateDisplay.textContent = formatDate(bookingData.appointment_date);
+    }
+    
+    showBookingStep(2);
+  });
+}
+
+// Step 2: Service selection
+const serviceRadios = document.querySelectorAll('input[name="service_category"]');
+const nextToPurposeBtn = document.getElementById('nextToPurposeBtn');
+const backToDateBtn = document.getElementById('backToDateBtn');
+
+if (nextToPurposeBtn) {
+  nextToPurposeBtn.addEventListener('click', () => {
+    const errorDiv = document.getElementById('error_service_category');
+    const selectedService = document.querySelector('input[name="service_category"]:checked');
+    
+    if (!selectedService) {
+      errorDiv.textContent = 'Please select a service type';
+      return;
+    }
+    errorDiv.textContent = '';
+    bookingData.service_category = selectedService.value;
+    
+    // Display selected service in step 3
+    const selectedServiceDisplay = document.getElementById('selectedServiceDisplay');
+    const selectedDateDisplay2 = document.getElementById('selectedDateDisplay2');
+    if (selectedServiceDisplay) {
+      selectedServiceDisplay.textContent = bookingData.service_category;
+    }
+    if (selectedDateDisplay2) {
+      selectedDateDisplay2.textContent = formatDate(bookingData.appointment_date);
+    }
+    
+    // Show/hide document type field based on service
+    const documentTypeGroup = document.getElementById('documentTypeGroup');
+    const documentTypeSelect = document.getElementById('document_type');
+    
+    if (bookingData.service_category === 'Document Request') {
+      documentTypeGroup.style.display = 'block';
+      documentTypeSelect.setAttribute('required', 'required');
+    } else {
+      documentTypeGroup.style.display = 'none';
+      documentTypeSelect.removeAttribute('required');
+      bookingData.document_type = ''; // Clear if not needed
+    }
+    
+    showBookingStep(3);
+  });
+}
+
+if (backToDateBtn) {
+  backToDateBtn.addEventListener('click', () => {
+    showBookingStep(1);
+  });
+}
+
+// Step 3: Purpose and details
+const nextToTimeBtn = document.getElementById('nextToTimeBtn');
+const backToServiceBtn = document.getElementById('backToServiceBtn');
+const purposeInput = document.getElementById('purpose');
+const documentTypeSelect = document.getElementById('document_type');
+
+if (nextToTimeBtn) {
+  nextToTimeBtn.addEventListener('click', async () => {
+    // Validate purpose
+    const errorPurpose = document.getElementById('error_purpose');
+    const errorDocType = document.getElementById('error_document_type');
+    
+    let isValid = true;
+    
+    if (bookingData.service_category === 'Document Request') {
+      if (!documentTypeSelect.value) {
+        errorDocType.textContent = 'Please select a document type';
+        isValid = false;
+      } else {
+        errorDocType.textContent = '';
+        bookingData.document_type = documentTypeSelect.value;
+      }
+    }
+    
+    if (!purposeInput.value.trim()) {
+      errorPurpose.textContent = 'Please provide purpose/details';
+      isValid = false;
+    } else {
+      errorPurpose.textContent = '';
+      bookingData.purpose = purposeInput.value.trim();
+    }
+    
+    if (!isValid) return;
+    
+    // Display selected info in step 4
+    const selectedDateDisplay3 = document.getElementById('selectedDateDisplay3');
+    const selectedServiceDisplay2 = document.getElementById('selectedServiceDisplay2');
+    if (selectedDateDisplay3) {
+      selectedDateDisplay3.textContent = formatDate(bookingData.appointment_date);
+    }
+    if (selectedServiceDisplay2) {
+      selectedServiceDisplay2.textContent = bookingData.service_category;
+    }
+    
+    // Load available time slots
+    await loadAvailableTimeSlots();
+    
+    showBookingStep(4);
+  });
+}
+
+if (backToServiceBtn) {
+  backToServiceBtn.addEventListener('click', () => {
+    showBookingStep(2);
+  });
+}
+
+// Step 4: Time selection and submission
+const backToPurposeBtn = document.getElementById('backToPurposeBtn');
+const submitAppointmentBtn = document.getElementById('submitAppointmentBtn');
+const appointmentTimeSelect = document.getElementById('appointment_time');
+
+if (backToPurposeBtn) {
+  backToPurposeBtn.addEventListener('click', () => {
+    showBookingStep(3);
+  });
+}
+
+if (submitAppointmentBtn) {
+  submitAppointmentBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    
+    const errorTime = document.getElementById('error_appointment_time');
+    if (!appointmentTimeSelect.value) {
+      errorTime.textContent = 'Please select a time slot';
+      return;
+    }
+    errorTime.textContent = '';
+    bookingData.appointment_time = appointmentTimeSelect.value;
+    
+    // Submit appointment
+    try {
+      const response = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          service_category: bookingData.service_category,
+          document_type: bookingData.document_type || null,
+          purpose: bookingData.purpose,
+          appointment_date: bookingData.appointment_date,
+          appointment_time: bookingData.appointment_time
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showToast('Appointment booked successfully!', 'success');
+        
+        // Reset booking data and form
+        bookingData = {
+          appointment_date: '',
+          service_category: '',
+          document_type: '',
+          purpose: '',
+          appointment_time: ''
+        };
+        
+        if (dateInput) dateInput.value = '';
+        serviceRadios.forEach(radio => radio.checked = false);
+        if (documentTypeSelect) documentTypeSelect.value = '';
+        if (purposeInput) purposeInput.value = '';
+        if (appointmentTimeSelect) appointmentTimeSelect.innerHTML = '<option value="">Select a date first</option>';
+        
+        loadAppointments();
+        fetchNotifications();
+        
+        // Switch to My Appointments view after booking
+        setTimeout(() => {
+          showMyAppointments();
+        }, 2000);
+      } else {
+        showToast(data.error || 'Failed to book appointment.', 'error');
+      }
+    } catch (error) {
+      showToast('Failed to book appointment.', 'error');
+      console.error('Error:', error);
+    }
+  });
+}
+
+// Load available time slots for step 4
+async function loadAvailableTimeSlots() {
+  const date = bookingData.appointment_date;
+  appointmentTimeSelect.innerHTML = '<option value="">Loading...</option>';
+
+  // Only allow times between 07:00 and 16:30 (last slot at 4:30 PM)
+  let minHour = 7;
+  let maxHour = 16; // Stop at 4:30 PM
+  let allowedTimes = [];
+
+  // If selected date is the min date, restrict times to those after minDate's hour
+  const minDate = getMinBookingDateTime();
+  const selectedDate = new Date(date + 'T00:00:00');
+  if (formatDateYYYYMMDD(selectedDate) === formatDateYYYYMMDD(minDate)) {
+    minHour = Math.max(minHour, minDate.getHours());
+  }
+
+  // Generate 30-minute interval slots from 7:00 AM to 4:30 PM
+  for (let hour = minHour; hour <= maxHour; hour++) {
+    allowedTimes.push((hour < 10 ? '0' : '') + hour + ':00');
+    if (hour < maxHour || (hour === maxHour && maxHour === 16)) {
+      allowedTimes.push((hour < 10 ? '0' : '') + hour + ':30');
+    }
+  }
+
+  // Populate time select
+  appointmentTimeSelect.innerHTML = '<option value="">Select Time</option>';
+  allowedTimes.forEach(time => {
+    const option = document.createElement('option');
+    option.value = time;
+    option.textContent = formatTime(time);
+    appointmentTimeSelect.appendChild(option);
+  });
+}
+
+// OLD CODE - Remove these as they're replaced by step-by-step logic
+/*
 // Load available time slots when date is selected
 appointmentDateInput.addEventListener('change', async (e) => {
   const date = e.target.value;
@@ -303,89 +616,6 @@ appointmentDateInput.addEventListener('change', async (e) => {
 });
 
 // Form validation helper
-function clearFieldErrors() {
-  document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
-}
-
-function showFieldError(fieldId, message) {
-  const errorDiv = document.getElementById(`error_${fieldId}`);
-  if (errorDiv) {
-    errorDiv.textContent = message;
-  }
-}
-
-function validateForm() {
-  clearFieldErrors();
-  let isValid = true;
-
-  const documentType = document.getElementById('document_type').value;
-  const appointmentDate = document.getElementById('appointment_date').value;
-  const appointmentTime = document.getElementById('appointment_time').value;
-
-  if (!documentType) {
-    showFieldError('document_type', 'Please select a document type');
-    isValid = false;
-  }
-
-  if (!appointmentDate) {
-    showFieldError('appointment_date', 'Please select an appointment date');
-    isValid = false;
-  }
-
-  if (!appointmentTime) {
-    showFieldError('appointment_time', 'Please select an appointment time');
-    isValid = false;
-  }
-
-  return isValid;
-}
-
-// Handle appointment form submission
-document.getElementById('appointmentForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  
-  if (!validateForm()) {
-    return;
-  }
-  
-  const formData = {
-    document_type: document.getElementById('document_type').value,
-    purpose: document.getElementById('purpose').value,
-    appointment_date: document.getElementById('appointment_date').value,
-    appointment_time: document.getElementById('appointment_time').value
-  };
-
-  const messageDiv = document.getElementById('message');
-
-  try {
-    const response = await fetch('/api/appointments', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(formData)
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      showToast('Appointment booked successfully!', 'success');
-      document.getElementById('appointmentForm').reset();
-      loadAppointments();
-      // Switch to My Appointments view after booking
-      setTimeout(() => {
-        showMyAppointments();
-      }, 2000);
-    } else {
-      showToast(data.error || 'Failed to book appointment.', 'error');
-    }
-  } catch (error) {
-    showToast('Failed to book appointment.', 'error');
-    console.error('Error:', error);
-  }
-});
-
 // Load user appointments
 async function loadAppointments() {
   const container = document.getElementById('appointmentsContainer');
@@ -403,12 +633,16 @@ async function loadAppointments() {
     if (appointments.length === 0) {
       container.innerHTML = '<div class="empty-state"><p style="font-size: 15px;">No appointments yet. Book your first appointment above!</p></div>';
     } else {
-      let html = '<div style="overflow-x: auto;"><table><thead><tr><th>Document Type</th><th>Date</th><th>Time</th><th>Status</th><th>Notes</th><th>Action</th></tr></thead><tbody>';
+      let html = '<div style="overflow-x: auto;"><table><thead><tr><th>Service Type</th><th>Details</th><th>Date</th><th>Time</th><th>Status</th><th>Notes</th><th>Action</th></tr></thead><tbody>';
       
       appointments.forEach(apt => {
+        const serviceType = apt.service_category || 'N/A';
+        const details = apt.document_type || apt.purpose || '-';
+        
         html += `
           <tr>
-            <td>${apt.document_type}</td>
+            <td>${serviceType}</td>
+            <td>${details}</td>
             <td>${formatDate(apt.appointment_date)}</td>
             <td>${formatTime(apt.appointment_time)}</td>
             <td><span class="status status-${apt.status}">${apt.status.toUpperCase()}</span></td>

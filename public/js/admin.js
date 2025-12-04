@@ -73,7 +73,7 @@ async function loadAppointments() {
     if (appointments.length === 0) {
       container.innerHTML = '<div class="empty-state"><p style="font-size: 15px;">No appointments in the system yet.</p></div>';
     } else {
-      let html = '<div style="overflow-x: auto;"><table><thead><tr><th>Resident</th><th>Contact</th><th>Document Type</th><th>Purpose</th><th>Date</th><th>Time</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead><tbody>';
+      let html = '<div style="overflow-x: auto;"><table><thead><tr><th>Resident</th><th>Contact</th><th>Service Type</th><th>Details</th><th>Purpose</th><th>Date</th><th>Time</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead><tbody>';
       
       // Local formatter for dates
       const formatDate = (value) => {
@@ -86,16 +86,22 @@ async function loadAppointments() {
         return isNaN(dt) ? value : dt.toLocaleDateString(undefined, opts);
       };
 
-      appointments.forEach(apt => {
+      const filters = getAdminFilters();
+      const filtered = applyFilter(appointments, filters);
+      filtered.forEach(apt => {
         // Show delete button only for completed or rejected appointments
         const showDelete = apt.status === 'completed' || apt.status === 'rejected';
+        
+        const serviceType = apt.service_category || 'Document Request';
+        const details = apt.document_type || '-';
         
         const safeNotes = (apt.notes || '').replace(/'/g, "\\'");
         html += `
           <tr>
             <td>${apt.first_name ? formatUserName(apt) : (apt.full_name || '-')}</td>
             <td>${apt.phone || apt.email || '-'}</td>
-            <td>${apt.document_type}</td>
+            <td>${serviceType}</td>
+            <td>${details}</td>
             <td>${apt.purpose || '-'}</td>
             <td>${formatDate(apt.appointment_date)}</td>
             <td>${formatTime(apt.appointment_time)}</td>
@@ -322,15 +328,16 @@ function formatDayHeader(date) {
 
 function renderWeeklyCalendar() {
   if (!weeklyCalendarEl) return;
+  const filters = getAdminFilters();
   const is24 = localStorage.getItem('timeFormat') === '24';
   // Date-only boundaries to avoid timezone inconsistencies
   const weekStartISO = currentWeekStart.toISOString().split('T')[0];
   const weekEndISO = addDays(currentWeekStart,4).toISOString().split('T')[0]; // Monday-Friday
-  const appointments = (window.appointmentsList || []).map(a => {
+  const appointments = applyFilter((window.appointmentsList || []).map(a => {
     // Normalize date to YYYY-MM-DD
     const normDate = (typeof a.appointment_date === 'string') ? a.appointment_date.substring(0,10) : new Date(a.appointment_date).toISOString().split('T')[0];
     return { ...a, _date: normDate };
-  }).filter(a => a._date >= weekStartISO && a._date <= weekEndISO);
+  }), filters).filter(a => a._date >= weekStartISO && a._date <= weekEndISO);
 
   // Build a map: key = date (YYYY-MM-DD) -> array of appointments
   const dayMap = {};
@@ -399,13 +406,14 @@ function renderWeeklyCalendar() {
         // console.debug('Calendar placement failed (admin):', a.appointment_time, 'base', baseTime);
         return;
       }
-      const durationSlots = 2; // assume 1 hour (2 half-hour slots)
+      const durationSlots = 1; // default 30 minutes (1 half-hour slot)
       const block = document.createElement('div');
       block.className = `appointment-block ${a.status}`;
       const displayTime = formatTime(a.appointment_time.substring(0,5));
       const mi = a.middle_name ? a.middle_name.charAt(0).toUpperCase() + '.' : '';
       const userName = `${a.first_name}${mi ? ' ' + mi : ''} ${a.last_name}`;
-      block.innerHTML = `<div style='font-weight:600;'>${a.document_type}</div><div>${displayTime}</div><div style='font-size:10px;'>${userName}</div>`;
+      const serviceType = a.service_category || 'Document Request';
+      block.innerHTML = `<div style='font-weight:600;'>${serviceType}</div><div>${displayTime}</div><div style='font-size:10px;'>${userName}</div>`;
       block.style.top = `${HEADER_HEIGHT + slotIndex * SLOT_HEIGHT + 1}px`;
       block.style.height = `${durationSlots * SLOT_HEIGHT - 4}px`;
       dayCol.appendChild(block);
@@ -419,14 +427,16 @@ function restoreAdminViewPreference() {
   const savedView = sessionStorage.getItem('adminViewPreference');
   if (savedView === 'week') {
     switchToWeekView();
+  } else {
+    // Ensure week nav is hidden on initial load if in table view
+    if (weekNav) weekNav.style.display = 'none';
   }
-  // Default is table view, no action needed
 }
 
 function switchToWeekView() {
   appointmentsTableContainer.style.display = 'none';
   weeklyCalendarContainer.style.display = 'block';
-  weekNav.hidden = false;
+  if (weekNav) weekNav.style.display = 'flex';
   // Button active styling
   if (tableViewBtn && weekViewBtn) {
     tableViewBtn.classList.remove('btn-primary');
@@ -441,7 +451,7 @@ function switchToWeekView() {
 function switchToTableView() {
   weeklyCalendarContainer.style.display = 'none';
   appointmentsTableContainer.style.display = 'block';
-  weekNav.hidden = true;
+  if (weekNav) weekNav.style.display = 'none';
   // Button active styling
   if (tableViewBtn && weekViewBtn) {
     weekViewBtn.classList.remove('btn-primary');
@@ -457,6 +467,35 @@ if (tableViewBtn) tableViewBtn.addEventListener('click', switchToTableView);
 if (prevWeekBtn) prevWeekBtn.addEventListener('click', () => { currentWeekStart = addDays(currentWeekStart, -7); renderWeeklyCalendar(); });
 if (nextWeekBtn) nextWeekBtn.addEventListener('click', () => { currentWeekStart = addDays(currentWeekStart, 7); renderWeeklyCalendar(); });
 if (thisWeekBtn) thisWeekBtn.addEventListener('click', () => { currentWeekStart = startOfWeek(new Date()); renderWeeklyCalendar(); });
+
+// --- Filters ---
+function getAdminFilters(){
+  const service = document.getElementById('filterService')?.value || '';
+  const status = document.getElementById('filterStatus')?.value || '';
+  const date = document.getElementById('filterDate')?.value || '';
+  return { service, status, date };
+}
+
+function applyFilter(list, { service, status, date }){
+  return (list||[]).filter(a => {
+    const okService = !service || (a.service_category === service);
+    const okStatus = !status || (a.status === status);
+    const apptDate = typeof a.appointment_date === 'string' ? a.appointment_date.substring(0,10) : new Date(a.appointment_date).toISOString().split('T')[0];
+    const okDate = !date || (apptDate === date);
+    return okService && okStatus && okDate;
+  });
+}
+
+// Re-render on filter changes
+window.addEventListener('adminFiltersChanged', () => {
+  // If in table view, rebuild table; if in week view, re-render calendar
+  const isWeek = weeklyCalendarContainer && weeklyCalendarContainer.style.display === 'block';
+  if (isWeek) {
+    renderWeeklyCalendar();
+  } else {
+    loadAppointments();
+  }
+});
 
 
 function renderNotifications() {

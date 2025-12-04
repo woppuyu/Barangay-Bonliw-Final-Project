@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Appointments - Barangay Bonliw</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <button class="burger-toggle" id="burgerToggle" aria-label="Menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <h1>Barangay Bonliw Appointment System</h1>
+      </div>
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <div class="notification-area">
+          <button id="notifBell" class="notif-bell" aria-label="Notifications">
+            <span class="bell-icon"></span>
+            <span id="notifCount" class="notif-count" style="display:none;">0</span>
+          </button>
+          <div id="notifDropdown" class="notif-dropdown" style="display:none;"></div>
+        </div>
+        <div class="site-settings-area">
+          <button id="siteSettingsBtn" class="site-settings-btn" aria-label="Site Settings">
+            <span class="settings-icon"></span>
+          </button>
+          <div id="siteSettingsDropdown" class="site-settings-dropdown" style="display:none;">
+            <div class="settings-item">
+              <label class="toggle-label">
+                <span>Dark Mode</span>
+                <input type="checkbox" id="darkModeToggle" class="toggle-checkbox">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="settings-item">
+              <label class="toggle-label">
+                <span>24-Hour Time</span>
+                <input type="checkbox" id="timeFormatToggle" class="toggle-checkbox">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="user-info" id="userInfo"></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <nav class="sidebar-nav" id="sidebarNav">
+    <div class="sidebar-header">
+      <h3 id="sidebarUserName"></h3>
+      <p>Resident Dashboard</p>
+    </div>
+    <div class="sidebar-body">
+      <ul class="sidebar-menu">
+        <li><a href="/dashboard" id="servicesLink">Services</a></li>
+        <li><a href="/my-appointments" id="myAppointmentsLink" class="active">My Appointments</a></li>
+        <li><a href="/book-appointment" id="bookAppointmentLink">Book Appointment</a></li>
+        <li><a href="/settings">Settings</a></li>
+        <li><button id="logoutBtn" class="logout">Logout</button></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div id="message"></div>
+    <div class="card" id="myAppointmentsPanel">
+      <h2>Manage Appointments</h2>
+      <div style="margin-bottom:16px; display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+        <div style="display:flex; gap:8px;">
+          <button id="tableViewBtn" class="btn btn-primary" style="padding:6px 14px;">Table View</button>
+          <button id="weekViewBtn" class="btn btn-secondary" style="padding:6px 14px;">Week View</button>
+        </div>
+        <div id="weekNav" style="display:none; margin-left:auto; gap:8px; align-items:center;">
+          <button id="prevWeekBtn" class="btn btn-secondary" style="padding:6px 10px;">◀</button>
+          <button id="thisWeekBtn" class="btn btn-secondary" style="padding:6px 10px;">This Week</button>
+          <button id="nextWeekBtn" class="btn btn-secondary" style="padding:6px 10px;">▶</button>
+        </div>
+      </div>
+      <div id="message"></div>
+      <div id="appointmentsContainer"></div>
+      <div id="weeklyCalendarContainer" style="display:none;">
+        <div class="weekly-calendar-header">
+          <h3 id="calendarMonthLabel"></h3>
+        </div>
+        <div id="weeklyCalendar" class="weekly-calendar"></div>
+        <div id="calendarLegend" class="calendar-legend"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/toast.js"></script>
+  <script src="/js/modal-utils.js"></script>
+  <script src="/js/site-settings.js"></script>
+  <script src="/js/dashboard-my-appointments.js"></script>
+</body>
+</html>

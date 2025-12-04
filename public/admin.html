@@ -76,11 +76,46 @@
         <div style="display:flex; gap:8px;">
           <button id="tableViewBtn" class="btn btn-primary" style="padding:6px 14px;">Table View</button>
           <button id="weekViewBtn" class="btn btn-secondary" style="padding:6px 14px;">Week View</button>
+          <button id="filterToggleBtn" class="btn btn-secondary" style="padding:6px 14px;">Filter</button>
         </div>
-        <div style="margin-left:auto; display:flex; gap:8px; align-items:center;" id="weekNav" hidden>
+        <div id="weekNav" style="display:none; margin-left:auto; gap:8px; align-items:center;">
           <button id="prevWeekBtn" class="btn btn-secondary" style="padding:6px 10px;">◀</button>
           <button id="thisWeekBtn" class="btn btn-secondary" style="padding:6px 10px;">This Week</button>
           <button id="nextWeekBtn" class="btn btn-secondary" style="padding:6px 10px;">▶</button>
+        </div>
+      </div>
+      <div id="filterPanel" style="display:none; margin-bottom:16px; padding:16px; background:#f7fafc; border-radius:8px; border:1px solid #e2e8f0;">
+        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;">
+          <div class="form-group" style="min-width:220px; margin-bottom:0;">
+            <label for="filterService">Service Type</label>
+            <select id="filterService">
+              <option value="">All</option>
+              <option>Document Request</option>
+              <option>Payment of Fees</option>
+              <option>Report Issue</option>
+              <option>Facility Request</option>
+              <option>General Inquiry</option>
+              <option>Other Services</option>
+            </select>
+          </div>
+          <div class="form-group" style="min-width:180px; margin-bottom:0;">
+            <label for="filterStatus">Status</label>
+            <select id="filterStatus">
+              <option value="">All</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="completed">Completed</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+          <div class="form-group" style="min-width:180px; margin-bottom:0;">
+            <label for="filterDate">Date</label>
+            <input type="date" id="filterDate" />
+          </div>
+          <div style="display:flex; gap:8px; align-items:flex-end;">
+            <button class="btn btn-primary" id="applyFilters" style="height:42px;">Apply</button>
+            <button class="btn btn-secondary" id="clearFilters" style="height:42px;">Clear</button>
+          </div>
         </div>
       </div>
       <div id="message"></div>
@@ -146,5 +181,50 @@
   <script src="/js/site-settings.js"></script>
   <script src="/js/sidebar-active.js"></script>
   <script src="/js/admin.js"></script>
+  <script>
+    // Toggle filter panel visibility
+    document.addEventListener('DOMContentLoaded', function(){
+      const filterToggleBtn = document.getElementById('filterToggleBtn');
+      const filterPanel = document.getElementById('filterPanel');
+      const applyBtn = document.getElementById('applyFilters');
+      const clearBtn = document.getElementById('clearFilters');
+      
+      if (filterToggleBtn && filterPanel) {
+        filterToggleBtn.addEventListener('click', ()=>{
+          const isHidden = filterPanel.style.display === 'none';
+          filterPanel.style.display = isHidden ? 'block' : 'none';
+        });
+      }
+      
+      if (applyBtn) {
+        applyBtn.addEventListener('click', ()=>{
+          const ev = new CustomEvent('adminFiltersChanged', {
+            detail: {
+              service: document.getElementById('filterService').value,
+              status: document.getElementById('filterStatus').value,
+              date: document.getElementById('filterDate').value
+            }
+          });
+          window.dispatchEvent(ev);
+          setTimeout(() => {
+            if (filterPanel) filterPanel.style.display = 'none';
+          }, 0);
+        });
+      }
+      
+      if (clearBtn) {
+        clearBtn.addEventListener('click', ()=>{
+          document.getElementById('filterService').value = '';
+          document.getElementById('filterStatus').value = '';
+          document.getElementById('filterDate').value = '';
+          const ev = new CustomEvent('adminFiltersChanged', { detail: { service:'', status:'', date:'' } });
+          window.dispatchEvent(ev);
+          setTimeout(() => {
+            if (filterPanel) filterPanel.style.display = 'none';
+          }, 0);
+        });
+      }
+    });
+  </script>
 </body>
 </html>

@@ -2044,6 +2044,166 @@ tbody tr,
   justify-content:space-between;
   margin-bottom:12px;
 }
+
+/* Service Items */
+.service-item {
+  background: white;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+
+.service-item:hover {
+  border-color: #cbd5e0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+body.dark-mode .service-item {
+  background: #2d3748;
+  border-color: #4a5568;
+}
+
+body.dark-mode .service-item:hover {
+  border-color: #718096;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+body.dark-mode .service-item h3 {
+  color: #e2e8f0;
+}
+
+body.dark-mode .service-item p {
+  color: #cbd5e0;
+}
+
+body.dark-mode .service-item > div[style*="background: #f7fafc"] {
+  background: #1a202c !important;
+}
+
+body.dark-mode .service-item strong {
+  color: #e2e8f0;
+}
+
+body.dark-mode .service-item ul {
+  color: #cbd5e0;
+}
+
+/* Service Option Radio Styles */
+.service-option {
+  display: block;
+  position: relative;
+  cursor: pointer;
+  padding: 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.service-option:hover {
+  border-color: #3182ce;
+  background-color: #f7fafc;
+}
+
+.service-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  /* Prevent native radio rendering to avoid double indicators */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.service-option input[type="radio"]:checked ~ .service-option-content {
+  color: #2c5282;
+}
+
+/* Do NOT reveal native radio on checked; we render a custom indicator via ::before */
+
+.service-option:has(input[type="radio"]:checked) {
+  border-color: #3182ce;
+  background-color: #ebf8ff;
+  box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+}
+
+.service-option-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 28px;
+}
+
+.service-option-content strong {
+  font-size: 1.05rem;
+  color: #2d3748;
+}
+
+.service-option-content span {
+  font-size: 0.9rem;
+  color: #718096;
+}
+
+.service-option input[type="radio"]::before {
+  content: '';
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  border: 2px solid #cbd5e0;
+  border-radius: 50%;
+  background-color: white;
+  opacity: 1;
+}
+
+.service-option input[type="radio"]:checked::before {
+  border-color: #3182ce;
+  background-color: #3182ce;
+  box-shadow: inset 0 0 0 4px white;
+}
+
+body.dark-mode .service-option {
+  border-color: #4a5568;
+  background-color: #2d3748;
+}
+
+body.dark-mode .service-option:hover {
+  border-color: #63b3ed;
+  background-color: #374151;
+}
+
+body.dark-mode .service-option:has(input[type="radio"]:checked) {
+  border-color: #63b3ed;
+  background-color: #1e3a5f;
+  box-shadow: 0 0 0 3px rgba(99, 179, 237, 0.1);
+}
+
+body.dark-mode .service-option-content strong {
+  color: #e2e8f0;
+}
+
+body.dark-mode .service-option-content span {
+  color: #a0aec0;
+}
+
+body.dark-mode .service-option input[type="radio"]::before {
+  border-color: #718096;
+  background-color: #1a202c;
+}
+
+body.dark-mode .service-option input[type="radio"]:checked::before {
+  border-color: #63b3ed;
+  background-color: #63b3ed;
+}
+
+.weekly-calendar-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:12px;
+}
 .weekly-calendar-header h3 {
   font-size:1rem;
   font-weight:600;

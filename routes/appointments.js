@@ -25,10 +25,10 @@ router.get('/time-slots', verifyToken, async (req, res) => {
 
 // Create appointment (transactional)
 router.post('/', verifyToken, async (req, res) => {
-  const { document_type, purpose, appointment_date, appointment_time } = req.body;
+  const { service_category, document_type, purpose, appointment_date, appointment_time } = req.body;
   const user_id = req.userId;
 
-  if (!document_type || !appointment_date || !appointment_time) {
+  if (!service_category || !purpose || !appointment_date || !appointment_time) {
     return res.status(400).json({ error: 'Please provide all required fields' });
   }
 
@@ -46,9 +46,9 @@ router.post('/', verifyToken, async (req, res) => {
     }
 
     const { rows } = await client.query(
-      `INSERT INTO appointments (user_id, document_type, purpose, appointment_date, appointment_time)
-       VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-      [user_id, document_type, purpose || null, appointment_date, appointment_time]
+      `INSERT INTO appointments (user_id, service_category, document_type, purpose, appointment_date, appointment_time)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+      [user_id, service_category, document_type || null, purpose, appointment_date, appointment_time]
     );
 
     await client.query(
@@ -67,7 +67,8 @@ router.post('/', verifyToken, async (req, res) => {
     
     if (user && user.email) {
       const appointmentData = {
-        document_type,
+        service_category,
+        document_type: document_type || 'N/A',
         purpose,
         appointment_date,
         appointment_time
@@ -81,6 +82,7 @@ router.post('/', verifyToken, async (req, res) => {
     res.json({ message: 'Appointment created successfully', appointmentId: rows[0].id });
   } catch (e) {
     await client.query('ROLLBACK');
+    console.error('Appointment creation error:', e);
     res.status(500).json({ error: 'Failed to create appointment' });
   } finally {
     client.release();
@@ -91,7 +93,8 @@ router.post('/', verifyToken, async (req, res) => {
 router.get('/my-appointments', verifyToken, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT * FROM appointments WHERE user_id = $1 ORDER BY appointment_date DESC, appointment_time DESC`,
+      // Show most recently booked first (use created_at if available, else id)
+      `SELECT * FROM appointments WHERE user_id = $1 ORDER BY created_at DESC NULLS LAST, id DESC`,
       [req.userId]
     );
     res.json(rows);
@@ -110,7 +113,7 @@ router.get('/all', verifyToken, async (req, res) => {
       `SELECT a.*, u.first_name, u.last_name, u.middle_name, u.phone, u.email
        FROM appointments a
        JOIN users u ON a.user_id = u.id
-       ORDER BY a.appointment_date DESC, a.appointment_time DESC`
+       ORDER BY a.created_at DESC NULLS LAST, a.id DESC`
     );
     res.json(rows);
   } catch (e) {

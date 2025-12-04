@@ -71,10 +71,20 @@ app.get('/manage-users', (req, res) => {
 });
 
 // Initialize database and start server
+console.log('Starting server initialization...');
+console.log('PORT:', PORT);
+console.log('DATABASE_URL present:', !!process.env.DATABASE_URL);
+console.log('PGHOST:', process.env.PGHOST);
+
 db.initialize().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  console.log('Database initialized successfully');
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Health check: http://localhost:${PORT}/health`);
   });
 }).catch(err => {
   console.error('Failed to initialize database:', err);
+  console.error('Error details:', err.message);
+  console.error('Stack:', err.stack);
+  process.exit(1);
 });

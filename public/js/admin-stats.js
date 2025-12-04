@@ -165,12 +165,31 @@ async function loadMonthSummary(year, month) {
 }
 
 function renderPieChart(container, data, onClick) {
+  if (!data || data.length === 0) {
+    container.innerHTML = '<div style="color:#718096;padding:40px;text-align:center;">No data available</div>';
+    return;
+  }
+  
   const total = data.reduce((sum, d) => sum + d.count, 0) || 1;
   const size = 240;
   const radius = size / 2 - 10;
   const cx = size / 2;
   const cy = size / 2;
   const svgNS = 'http://www.w3.org/2000/svg';
+  
+  // Clear container and set up proper layout
+  container.innerHTML = '';
+  container.style.position = 'relative';
+  container.style.minHeight = `${size + 40}px`;
+  container.style.display = 'flex';
+  container.style.justifyContent = 'center';
+  container.style.alignItems = 'center';
+  
+  const chartWrapper = document.createElement('div');
+  chartWrapper.style.position = 'relative';
+  chartWrapper.style.width = `${size}px`;
+  chartWrapper.style.height = `${size}px`;
+  
   const svg = document.createElementNS(svgNS, 'svg');
   svg.setAttribute('width', size);
   svg.setAttribute('height', size);
@@ -200,18 +219,20 @@ function renderPieChart(container, data, onClick) {
     const ly = cy + (radius + 12) * Math.sin(midAngle);
     const label = document.createElement('div');
     label.style.position = 'absolute';
-    label.style.left = `${lx - 20}px`;
-    label.style.top = `${ly - 10}px`;
+    label.style.left = `${lx}px`;
+    label.style.top = `${ly}px`;
     label.style.fontSize = '12px';
     label.style.color = '#4a5568';
+    label.style.transform = 'translate(-50%, -50%)';
+    label.style.whiteSpace = 'nowrap';
     label.textContent = `${d.status} (${d.count})`;
-    container.style.position = 'relative';
-    container.appendChild(label);
+    chartWrapper.appendChild(label);
 
     startAngle = endAngle;
   });
 
-  container.appendChild(svg);
+  chartWrapper.appendChild(svg);
+  container.appendChild(chartWrapper);
 }
 
 async function loadDocTypeBreakdown(year, month, status, count) {
@@ -221,16 +242,20 @@ async function loadDocTypeBreakdown(year, month, status, count) {
     });
     if (!res.ok) throw new Error('Failed to fetch doc type breakdown');
     const data = await res.json();
+    console.log('Breakdown data:', data);
     const panel = document.getElementById('docTypeBreakdown');
     const title = document.getElementById('breakdownTitle');
     const list = document.getElementById('docTypeList');
-    title.textContent = `Document Types – ${status} (${count})`;
+    const statusTitle = status.charAt(0).toUpperCase() + status.slice(1);
+    title.textContent = `${statusTitle} - Breakdown (${count})`;
     list.innerHTML = '';
     data.breakdown.forEach(item => {
+      console.log('Item:', item);
       const row = document.createElement('div');
       row.style.display = 'flex';
       row.style.justifyContent = 'space-between';
-      row.innerHTML = `<span>${item.document_type}</span><strong>${item.count}</strong>`;
+      const serviceType = item.service_category || 'Other';
+      row.innerHTML = `<span>${serviceType}</span><strong>${item.count}</strong>`;
       list.appendChild(row);
     });
     panel.style.display = 'block';

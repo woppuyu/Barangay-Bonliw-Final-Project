@@ -165,7 +165,7 @@ router.get('/month-doc-types', verifyToken, async (req, res) => {
 
   try {
     const params = [year, month];
-    let query = `SELECT document_type, COUNT(*) AS count
+    let query = `SELECT service_category, COUNT(*) AS count
                  FROM appointments
                  WHERE EXTRACT(YEAR FROM appointment_date) = $1
                    AND EXTRACT(MONTH FROM appointment_date) = $2`;
@@ -173,10 +173,10 @@ router.get('/month-doc-types', verifyToken, async (req, res) => {
       params.push(status);
       query += ` AND status = $3`;
     }
-    query += ` GROUP BY document_type ORDER BY count DESC`;
+    query += ` GROUP BY service_category ORDER BY count DESC`;
 
     const { rows } = await pool.query(query, params);
-    const breakdown = rows.map(r => ({ document_type: r.document_type, count: parseInt(r.count) }));
+    const breakdown = rows.map(r => ({ service_category: r.service_category, count: parseInt(r.count) }));
     res.json({ year, month, status: status || 'all', breakdown });
   } catch (err) {
     console.error('Month doc types error:', err);

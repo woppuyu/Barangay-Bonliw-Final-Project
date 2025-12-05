@@ -98,11 +98,18 @@
             <div id="docTypeBreakdown" class="card" style="margin-top:12px; padding:12px; display:none;">
               <h4 id="breakdownTitle" style="margin-bottom:8px;">Document Type Breakdown</h4>
               <div id="docTypeList" style="display:grid; grid-template-columns:repeat(2, minmax(180px, 1fr)); gap:8px;"></div>
+              <div id="rejectionReasonSection" style="margin-top:12px; display:none;">
+                <button id="rejectionReasonsBtn" class="btn btn-secondary" style="padding:6px 10px;">Show rejection reasons</button>
+                <div id="rejectionReasonsContainer" style="margin-top:10px; display:none;">
+                  <div id="rejectionReasonsChart" class="bar-chart"></div>
+                </div>
+              </div>
             </div>
           </div>
           <div class="card" style="padding:16px;">
             <h3>New Users This Month</h3>
             <div id="usersMonthSummary" style="display:flex; gap:24px; flex-wrap:wrap;"></div>
+            <div id="totalUsersCard" class="stat-card" style="margin-top:12px; display:none;"></div>
           </div>
         </div>
       </div>
@@ -118,6 +125,10 @@
           <div class="card" style="padding:16px;">
             <h3>Monthly New Users</h3>
             <div id="usersYearChart" class="bar-chart"></div>
+          </div>
+          <div class="card" style="padding:16px;">
+            <h3>Total Users Growth</h3>
+            <div id="usersYearTotalLine" style="margin-top:8px;"></div>
           </div>
         </div>
       </div>

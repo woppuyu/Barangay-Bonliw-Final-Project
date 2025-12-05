@@ -54,8 +54,16 @@ for (let m = 1; m <= 12; m++) {
 }
 
 statsYearSelect.addEventListener('change', () => loadYear(parseInt(statsYearSelect.value)));
-monthYearSelect.addEventListener('change', () => loadMonthSummary(parseInt(monthYearSelect.value), parseInt(monthSelect.value)));
-monthSelect.addEventListener('change', () => loadMonthSummary(parseInt(monthYearSelect.value), parseInt(monthSelect.value)));
+monthYearSelect.addEventListener('change', () => {
+  const breakdown = document.getElementById('docTypeBreakdown');
+  if (breakdown) breakdown.style.display = 'none';
+  loadMonthSummary(parseInt(monthYearSelect.value), parseInt(monthSelect.value));
+});
+monthSelect.addEventListener('change', () => {
+  const breakdown = document.getElementById('docTypeBreakdown');
+  if (breakdown) breakdown.style.display = 'none';
+  loadMonthSummary(parseInt(monthYearSelect.value), parseInt(monthSelect.value));
+});
 
 function monthLabel(m) {
   return new Date(2000, m - 1, 1).toLocaleString(undefined, { month: 'short' });
@@ -104,6 +112,138 @@ function renderBarChart(container, data, labelKey = 'month') {
   container.appendChild(chart);
 }
 
+// Simple line chart for cumulative totals (month on x, total on y)
+function renderLineChart(container, data) {
+  container.innerHTML = '';
+  if (!data || data.length === 0) {
+    container.textContent = 'No data available.';
+    return;
+  }
+
+  const maxY = Math.max(...data.map(d => d.total), 1);
+  const width = Math.max(container.clientWidth || 0, 680);
+  const height = 240;
+  const padding = 36;
+  const stepX = (width - padding * 2) / Math.max(data.length - 1, 1);
+  const points = data.map((d, i) => {
+    const x = padding + i * stepX;
+    const y = height - padding - (d.total / maxY) * (height - padding * 2);
+    return { x, y, total: d.total, label: monthLabel(d.month) };
+  });
+
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('width', width);
+  svg.setAttribute('height', height);
+  svg.style.background = '#f8fafc';
+  svg.style.border = '1px solid #e2e8f0';
+  svg.style.borderRadius = '8px';
+
+  const axisColor = '#cbd5e0';
+  const xAxis = document.createElementNS(svgNS, 'line');
+  xAxis.setAttribute('x1', padding);
+  xAxis.setAttribute('y1', height - padding);
+  xAxis.setAttribute('x2', width - padding);
+  xAxis.setAttribute('y2', height - padding);
+  xAxis.setAttribute('stroke', axisColor);
+  svg.appendChild(xAxis);
+
+  const yAxis = document.createElementNS(svgNS, 'line');
+  yAxis.setAttribute('x1', padding);
+  yAxis.setAttribute('y1', padding);
+  yAxis.setAttribute('x2', padding);
+  yAxis.setAttribute('y2', height - padding);
+  yAxis.setAttribute('stroke', axisColor);
+  svg.appendChild(yAxis);
+
+  const path = document.createElementNS(svgNS, 'polyline');
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke', '#3182ce');
+  path.setAttribute('stroke-width', '2');
+  path.setAttribute('points', points.map(p => `${p.x},${p.y}`).join(' '));
+  svg.appendChild(path);
+
+  points.forEach(p => {
+    const circle = document.createElementNS(svgNS, 'circle');
+    circle.setAttribute('cx', p.x);
+    circle.setAttribute('cy', p.y);
+    circle.setAttribute('r', 4);
+    circle.setAttribute('fill', '#3182ce');
+    svg.appendChild(circle);
+
+    const value = document.createElementNS(svgNS, 'text');
+    value.setAttribute('x', p.x);
+    value.setAttribute('y', p.y - 8);
+    value.setAttribute('text-anchor', 'middle');
+    value.setAttribute('fill', '#1f2937');
+    value.setAttribute('font-size', '12');
+    value.textContent = p.total;
+    svg.appendChild(value);
+
+    const label = document.createElementNS(svgNS, 'text');
+    label.setAttribute('x', p.x);
+    label.setAttribute('y', height - padding + 14);
+    label.setAttribute('text-anchor', 'middle');
+    label.setAttribute('fill', '#4a5568');
+    label.setAttribute('font-size', '12');
+    label.textContent = p.label;
+    svg.appendChild(label);
+  });
+
+  container.appendChild(svg);
+}
+
+// Render vertical bar chart for rejection reasons
+function renderReasonBarChart(container, data) {
+  container.innerHTML = '';
+  if (!data || data.length === 0) {
+    container.textContent = 'No rejection reasons for this period.';
+    return;
+  }
+  const max = Math.max(...data.map(d => d.count), 1);
+  const chart = document.createElement('div');
+  chart.style.display = 'grid';
+  chart.style.gridTemplateColumns = '200px 1fr';
+  chart.style.rowGap = '10px';
+  chart.style.columnGap = '12px';
+  chart.style.alignItems = 'center';
+
+  data.forEach(d => {
+    const label = document.createElement('div');
+    label.style.fontSize = '12px';
+    label.style.color = '#2d3748';
+    label.style.wordBreak = 'break-word';
+    label.title = d.reason;
+    label.textContent = d.reason;
+
+    const barRow = document.createElement('div');
+    barRow.style.display = 'flex';
+    barRow.style.alignItems = 'center';
+    barRow.style.gap = '8px';
+
+    const bar = document.createElement('div');
+    bar.style.height = '16px';
+    bar.style.width = `${Math.max(12, Math.round((d.count / max) * 220))}px`;
+    bar.style.background = '#f87171';
+    bar.style.borderRadius = '4px';
+    bar.title = `${d.count} rejection${d.count === 1 ? '' : 's'}`;
+
+    const value = document.createElement('div');
+    value.style.fontSize = '12px';
+    value.style.fontWeight = '700';
+    value.style.color = '#1f2937';
+    value.textContent = d.count;
+
+    barRow.appendChild(bar);
+    barRow.appendChild(value);
+
+    chart.appendChild(label);
+    chart.appendChild(barRow);
+  });
+
+  container.appendChild(chart);
+}
+
 async function loadYear(year) {
   try {
     const res = await fetch(`/api/stats/monthly?year=${year}`, {
@@ -113,6 +253,10 @@ async function loadYear(year) {
     const stats = await res.json();
     renderBarChart(document.getElementById('appointmentsYearChart'), stats.appointmentsByMonth, 'month');
     renderBarChart(document.getElementById('usersYearChart'), stats.usersByMonth, 'month');
+    const cumulative = [];
+    let running = parseInt(stats.usersBeforeYear || 0);
+    stats.usersByMonth.forEach(m => { running += m.count; cumulative.push({ month: m.month, total: running }); });
+    renderLineChart(document.getElementById('usersYearTotalLine'), cumulative);
   } catch (e) {
     showToast('Failed to load statistics', 'error');
     console.error(e);
@@ -130,9 +274,18 @@ async function loadMonthSummary(year, month) {
     const pieEl = document.getElementById('appointmentsMonthPie');
     const appEl = document.getElementById('appointmentsMonthSummary');
     const userEl = document.getElementById('usersMonthSummary');
+    const totalUsersCard = document.getElementById('totalUsersCard');
     pieEl.innerHTML = '';
     appEl.innerHTML = '';
     userEl.innerHTML = '';
+    if (totalUsersCard) {
+      totalUsersCard.style.display = 'block';
+      if (window.__totalUsersCached != null) {
+        totalUsersCard.innerHTML = `<div style="font-size:14px;color:#718096;">Total Users</div><div style="font-size:26px;font-weight:700;color:#2d3748;">${window.__totalUsersCached}</div>`;
+      } else {
+        totalUsersCard.innerHTML = '<div style="font-size:14px;color:#718096;">Total Users</div><div style="font-size:18px;color:#2d3748;">Loading...</div>';
+      }
+    }
 
     const totalCard = document.createElement('div');
     totalCard.className = 'stat-card';
@@ -274,9 +427,18 @@ async function loadDocTypeBreakdown(year, month, status, count) {
     const panel = document.getElementById('docTypeBreakdown');
     const title = document.getElementById('breakdownTitle');
     const list = document.getElementById('docTypeList');
+    const rejectionSection = document.getElementById('rejectionReasonSection');
+    const rejectionBtn = document.getElementById('rejectionReasonsBtn');
+    const rejectionContainer = document.getElementById('rejectionReasonsContainer');
+    const rejectionChart = document.getElementById('rejectionReasonsChart');
     const statusTitle = status.charAt(0).toUpperCase() + status.slice(1);
     title.textContent = `${statusTitle} - Breakdown (${count})`;
     list.innerHTML = '';
+    if (rejectionSection && rejectionChart) {
+      rejectionSection.style.display = 'none';
+      rejectionChart.innerHTML = '';
+    }
+    if (rejectionContainer) rejectionContainer.style.display = 'none';
     data.breakdown.forEach(item => {
       console.log('Item:', item);
       const row = document.createElement('div');
@@ -286,6 +448,31 @@ async function loadDocTypeBreakdown(year, month, status, count) {
       row.innerHTML = `<span>${serviceType}</span><strong>${item.count}</strong>`;
       list.appendChild(row);
     });
+
+    // Only show rejection reasons chart when viewing rejected breakdown
+    if (status === 'rejected' && rejectionSection && rejectionChart && rejectionBtn && rejectionContainer) {
+      rejectionSection.style.display = 'block';
+      rejectionBtn.onclick = async () => {
+        try {
+          rejectionBtn.disabled = true;
+          rejectionBtn.textContent = 'Loading...';
+          const reasonsRes = await fetch(`/api/stats/month-rejection-reasons?year=${year}&month=${month}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (!reasonsRes.ok) throw new Error('Failed to fetch rejection reasons');
+          const reasonsData = await reasonsRes.json();
+          renderReasonBarChart(rejectionChart, reasonsData.breakdown || []);
+          rejectionContainer.style.display = 'block';
+        } catch (reasonErr) {
+          showToast('Failed to load rejection reasons', 'error');
+          console.error(reasonErr);
+        } finally {
+          rejectionBtn.disabled = false;
+          rejectionBtn.textContent = 'Show rejection reasons';
+        }
+      };
+    }
+
     panel.style.display = 'block';
   } catch (e) {
     showToast('Failed to load document type breakdown', 'error');
@@ -323,6 +510,23 @@ viewYearBtn.addEventListener('click', switchToYear);
 
 // Initial load: show this month daily stats
 switchToMonth();
+
+// Fetch total users once
+(async function fetchTotalUsersOnce(){
+  try {
+    const res = await fetch('/api/stats/total-users', { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Failed to fetch total users');
+    const data = await res.json();
+    window.__totalUsersCached = data.totalUsers;
+    const totalUsersCard = document.getElementById('totalUsersCard');
+    if (totalUsersCard) {
+      totalUsersCard.innerHTML = `<div style="font-size:14px;color:#718096;">Total Users</div><div style="font-size:26px;font-weight:700;color:#2d3748;">${data.totalUsers}</div>`;
+      totalUsersCard.style.display = 'block';
+    }
+  } catch (err) {
+    console.error(err);
+  }
+})();
 
 // Burger menu toggle
 const burgerToggle = document.getElementById('burgerToggle');

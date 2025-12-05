@@ -34,6 +34,14 @@ router.get('/monthly', verifyToken, async (req, res) => {
       [year]
     );
 
+    const { rows: usersBeforeRows } = await pool.query(
+      `SELECT COUNT(*) AS count
+       FROM users
+       WHERE created_at < make_date($1, 1, 1)`,
+      [year]
+    );
+    const usersBeforeYear = parseInt(usersBeforeRows[0]?.count || 0);
+
     // Normalize to 12 months
     const months = Array.from({ length: 12 }, (_, i) => i + 1);
     const appointmentsByMonth = months.map(m => {
@@ -45,10 +53,26 @@ router.get('/monthly', verifyToken, async (req, res) => {
       return { month: m, count: row ? parseInt(row.count) : 0 };
     });
 
-    res.json({ year, appointmentsByMonth, usersByMonth });
+    res.json({ year, appointmentsByMonth, usersByMonth, usersBeforeYear });
   } catch (err) {
     console.error('Monthly stats error:', err);
     res.status(500).json({ error: 'Failed to fetch monthly stats' });
+  }
+});
+
+// GET /api/stats/total-users
+router.get('/total-users', verifyToken, async (req, res) => {
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  try {
+    const { rows } = await pool.query('SELECT COUNT(*) AS count FROM users');
+    const totalUsers = parseInt(rows[0]?.count || 0);
+    res.json({ totalUsers });
+  } catch (err) {
+    console.error('Total users stats error:', err);
+    res.status(500).json({ error: 'Failed to fetch total users' });
   }
 });
 
@@ -183,5 +207,35 @@ router.get('/month-doc-types', verifyToken, async (req, res) => {
   } catch (err) {
     console.error('Month doc types error:', err);
     res.status(500).json({ error: 'Failed to fetch document type breakdown' });
+  }
+});
+
+// GET /api/stats/month-rejection-reasons?year=2025&month=11
+// Returns rejection reasons breakdown for the given month (status = rejected)
+router.get('/month-rejection-reasons', verifyToken, async (req, res) => {
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  const year = parseInt(req.query.year) || new Date().getFullYear();
+  const month = parseInt(req.query.month) || (new Date().getMonth() + 1);
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT COALESCE(NULLIF(TRIM(notes), ''), 'Unspecified') AS reason, COUNT(*) AS count
+       FROM appointments
+       WHERE status = 'rejected'
+         AND EXTRACT(YEAR FROM (appointment_date AT TIME ZONE 'UTC')::date) = $1
+         AND EXTRACT(MONTH FROM (appointment_date AT TIME ZONE 'UTC')::date) = $2
+       GROUP BY reason
+       ORDER BY count DESC`,
+      [year, month]
+    );
+
+    const breakdown = rows.map(r => ({ reason: r.reason, count: parseInt(r.count) }));
+    res.json({ year, month, breakdown });
+  } catch (err) {
+    console.error('Month rejection reasons error:', err);
+    res.status(500).json({ error: 'Failed to fetch rejection reasons breakdown' });
   }
 });

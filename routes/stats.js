@@ -4,6 +4,8 @@ const { verifyToken } = require('./auth');
 
 const router = express.Router();
 
+// Normalize appointment dates using UTC day boundaries to avoid off-by-one issues from stored time components
+
 // GET /api/stats/monthly?year=2025
 // Returns counts of appointments and users grouped by month for the given year
 router.get('/monthly', verifyToken, async (req, res) => {
@@ -15,9 +17,9 @@ router.get('/monthly', verifyToken, async (req, res) => {
 
   try {
     const { rows: aptRows } = await pool.query(
-      `SELECT EXTRACT(MONTH FROM appointment_date) AS month, COUNT(*) AS count
+      `SELECT EXTRACT(MONTH FROM (appointment_date AT TIME ZONE 'UTC')::date) AS month, COUNT(*) AS count
        FROM appointments
-       WHERE EXTRACT(YEAR FROM appointment_date) = $1
+       WHERE EXTRACT(YEAR FROM (appointment_date AT TIME ZONE 'UTC')::date) = $1
        GROUP BY month
        ORDER BY month`,
       [year]
@@ -64,10 +66,10 @@ router.get('/daily', verifyToken, async (req, res) => {
 
   try {
     const { rows: aptRows } = await pool.query(
-      `SELECT EXTRACT(DAY FROM appointment_date) AS day, COUNT(*) AS count
+      `SELECT EXTRACT(DAY FROM (appointment_date AT TIME ZONE 'UTC')::date) AS day, COUNT(*) AS count
        FROM appointments
-       WHERE EXTRACT(YEAR FROM appointment_date) = $1
-         AND EXTRACT(MONTH FROM appointment_date) = $2
+       WHERE EXTRACT(YEAR FROM (appointment_date AT TIME ZONE 'UTC')::date) = $1
+         AND EXTRACT(MONTH FROM (appointment_date AT TIME ZONE 'UTC')::date) = $2
        GROUP BY day
        ORDER BY day`,
       [year, month]
@@ -116,16 +118,16 @@ router.get('/month-summary', verifyToken, async (req, res) => {
     const { rows: aptTotalRows } = await pool.query(
       `SELECT COUNT(*) AS count
        FROM appointments
-       WHERE EXTRACT(YEAR FROM appointment_date) = $1
-         AND EXTRACT(MONTH FROM appointment_date) = $2`,
+       WHERE EXTRACT(YEAR FROM (appointment_date AT TIME ZONE 'UTC')::date) = $1
+         AND EXTRACT(MONTH FROM (appointment_date AT TIME ZONE 'UTC')::date) = $2`,
       [year, month]
     );
 
     const { rows: aptStatusRows } = await pool.query(
       `SELECT status, COUNT(*) AS count
        FROM appointments
-       WHERE EXTRACT(YEAR FROM appointment_date) = $1
-         AND EXTRACT(MONTH FROM appointment_date) = $2
+       WHERE EXTRACT(YEAR FROM (appointment_date AT TIME ZONE 'UTC')::date) = $1
+         AND EXTRACT(MONTH FROM (appointment_date AT TIME ZONE 'UTC')::date) = $2
        GROUP BY status`,
       [year, month]
     );
@@ -167,8 +169,8 @@ router.get('/month-doc-types', verifyToken, async (req, res) => {
     const params = [year, month];
     let query = `SELECT service_category, COUNT(*) AS count
                  FROM appointments
-                 WHERE EXTRACT(YEAR FROM appointment_date) = $1
-                   AND EXTRACT(MONTH FROM appointment_date) = $2`;
+                 WHERE EXTRACT(YEAR FROM (appointment_date AT TIME ZONE 'UTC')::date) = $1
+                   AND EXTRACT(MONTH FROM (appointment_date AT TIME ZONE 'UTC')::date) = $2`;
     if (status) {
       params.push(status);
       query += ` AND status = $3`;

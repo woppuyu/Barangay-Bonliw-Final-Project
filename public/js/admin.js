@@ -87,9 +87,13 @@ async function loadAppointments() {
       // Local formatter for dates
       const formatDate = (value) => {
         const opts = { year: 'numeric', month: 'short', day: 'numeric' };
-        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-          const [y, m, d] = value.split('-').map(Number);
-          return new Date(y, m - 1, d).toLocaleDateString(undefined, opts);
+        if (typeof value === 'string') {
+          // Extract just the date part (first 10 chars) regardless of format
+          const dateStr = value.substring(0, 10);
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            const [y, m, d] = dateStr.split('-').map(Number);
+            return new Date(y, m - 1, d).toLocaleDateString(undefined, opts);
+          }
         }
         const dt = new Date(value);
         return isNaN(dt) ? value : dt.toLocaleDateString(undefined, opts);
@@ -146,10 +150,10 @@ function openUpdateModal(id, status, notes) {
     rescheduleWrapper.style.display = 'block';
     const dateInput = document.getElementById('updateDate');
     const timeInput = document.getElementById('updateTime');
-    dateInput.value = apt.appointment_date;
+    dateInput.value = (apt.appointment_date || '').toString().substring(0,10);
     
     // Set min to today so past dates are greyed out
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalISODate(new Date());
     dateInput.min = today;
     
     timeInput.value = apt.appointment_time;
@@ -335,16 +339,23 @@ function formatDayHeader(date) {
   return `${dayStr} ${numStr}`;
 }
 
+// Convert a Date to local YYYY-MM-DD without timezone shifting the calendar boundaries
+const toLocalISODate = (d) => {
+  if (!(d instanceof Date)) return '';
+  const tzOffset = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tzOffset).toISOString().split('T')[0];
+};
+
 function renderWeeklyCalendar() {
   if (!weeklyCalendarEl) return;
   const filters = getAdminFilters();
   const is24 = localStorage.getItem('timeFormat') === '24';
   // Date-only boundaries to avoid timezone inconsistencies
-  const weekStartISO = currentWeekStart.toISOString().split('T')[0];
-  const weekEndISO = addDays(currentWeekStart,4).toISOString().split('T')[0]; // Monday-Friday
+  const weekStartISO = toLocalISODate(currentWeekStart);
+  const weekEndISO = toLocalISODate(addDays(currentWeekStart,4)); // Monday-Friday
   const appointments = applyFilter((window.appointmentsList || []).map(a => {
     // Normalize date to YYYY-MM-DD
-    const normDate = (typeof a.appointment_date === 'string') ? a.appointment_date.substring(0,10) : new Date(a.appointment_date).toISOString().split('T')[0];
+    const normDate = (typeof a.appointment_date === 'string') ? a.appointment_date.substring(0,10) : toLocalISODate(new Date(a.appointment_date));
     return { ...a, _date: normDate };
   }), filters).filter(a => a._date >= weekStartISO && a._date <= weekEndISO);
 
@@ -352,7 +363,7 @@ function renderWeeklyCalendar() {
   const dayMap = {};
   for (let i=0;i<5;i++) { // Monday-Friday
     const d = addDays(currentWeekStart,i);
-    const iso = d.toISOString().split('T')[0];
+    const iso = toLocalISODate(d);
     dayMap[iso] = [];
   }
   appointments.forEach(a => {
@@ -388,7 +399,7 @@ function renderWeeklyCalendar() {
   // Day columns Monday-Friday
   for (let i=0;i<5;i++) {
     const d = addDays(currentWeekStart,i);
-    const iso = d.toISOString().split('T')[0];
+    const iso = toLocalISODate(d);
     const dayCol = document.createElement('div');
     dayCol.className = 'day-column';
     const header = document.createElement('div');
@@ -489,8 +500,17 @@ function applyFilter(list, { service, status, date }){
   return (list||[]).filter(a => {
     const okService = !service || (a.service_category === service);
     const okStatus = !status || (a.status === status);
-    const apptDate = typeof a.appointment_date === 'string' ? a.appointment_date.substring(0,10) : new Date(a.appointment_date).toISOString().split('T')[0];
+    // Always compare on the stored date component (YYYY-MM-DD)
+    let apptDate;
+    if (typeof a.appointment_date === 'string') {
+      apptDate = a.appointment_date.substring(0, 10);
+    } else {
+      apptDate = toLocalISODate(new Date(a.appointment_date));
+    }
     const okDate = !date || (apptDate === date);
+    if (date) {
+      console.log(`Compare: apptDate="${apptDate}" vs filterDate="${date}", match=${okDate}, raw="${a.appointment_date}", type=${typeof a.appointment_date}`);
+    }
     return okService && okStatus && okDate;
   });
 }

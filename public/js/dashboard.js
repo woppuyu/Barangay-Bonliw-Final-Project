@@ -186,17 +186,54 @@ function getMinBookingDateTime() {
   } else {
     now.setMinutes(0, 0, 0);
   }
+  // Ensure the date is Monday-Saturday (not Sunday)
+  // 0 = Sunday, 1 = Monday, 6 = Saturday
+  while (now.getDay() === 0) {
+    now.setDate(now.getDate() + 1); // Skip Sunday
+  }
   return now;
+}
 }
 
 function formatDateYYYYMMDD(date) {
   return date.toISOString().split('T')[0];
 }
 
+// Helper function to disable Sundays in date inputs
+function disableSundaysInDateInput(dateInput) {
+  if (!dateInput) return;
+  
+  const validateDate = (e) => {
+    const selectedDate = new Date(e.target.value + 'T00:00:00');
+    if (e.target.value && selectedDate.getDay() === 0) { // Sunday
+      // Clear the input and show toast
+      e.target.value = '';
+      showToast('Appointments cannot be scheduled on Sundays. Please select Monday-Saturday.', 'error');
+      bookingData.appointment_date = '';
+    }
+  };
+  
+  dateInput.addEventListener('input', validateDate);
+  dateInput.addEventListener('change', validateDate);
+}
+
 // Set min date on load
-if (appointmentDateInput) {
+const bookingDateInput = document.getElementById('appointment_date_step1');
+if (bookingDateInput) {
   const minDate = getMinBookingDateTime();
-  appointmentDateInput.min = formatDateYYYYMMDD(minDate);
+  bookingDateInput.min = formatDateYYYYMMDD(minDate);
+  
+  // Disable Sundays with same logic as admin - use both input and change events
+  const validateSunday = (e) => {
+    const selectedDate = new Date(e.target.value + 'T00:00:00');
+    if (e.target.value && selectedDate.getDay() === 0) { // Sunday
+      e.target.value = '';
+      showToast('Appointments cannot be scheduled on Sundays. Please select Monday-Saturday.', 'error');
+      bookingData.appointment_date = '';
+    }
+  };
+  bookingDateInput.addEventListener('input', validateSunday);
+  bookingDateInput.addEventListener('change', validateSunday);
 }
 
 // --- Prepare for 12/24 hour toggle (placeholder) ---
@@ -344,6 +381,15 @@ if (dateInput && nextToServiceBtn) {
       errorDiv.textContent = 'Please select a date';
       return;
     }
+    
+    // Check if selected date is Sunday
+    const selectedDate = new Date(dateInput.value + 'T00:00:00');
+    if (selectedDate.getDay() === 0) { // Sunday
+      errorDiv.textContent = 'Appointments cannot be scheduled on Sundays. Please select Monday-Saturday.';
+      dateInput.value = '';
+      return;
+    }
+    
     errorDiv.textContent = '';
     bookingData.appointment_date = dateInput.value;
     
@@ -546,9 +592,10 @@ async function loadAvailableTimeSlots() {
   const date = bookingData.appointment_date;
   appointmentTimeSelect.innerHTML = '<option value="">Loading...</option>';
 
-  // Only allow times between 07:00 and 16:30 (last slot at 4:30 PM)
+  // Office hours: Monday-Saturday, 7am to 5pm
+  // Time slots: 7:00 AM to 4:30 PM (last available slot)
   let minHour = 7;
-  let maxHour = 16; // Stop at 4:30 PM
+  let maxHour = 16; // 4 PM, so we include 4:00 and 4:30
   let allowedTimes = [];
 
   // If selected date is the min date, restrict times to those after minDate's hour
@@ -561,8 +608,12 @@ async function loadAvailableTimeSlots() {
   // Generate 30-minute interval slots from 7:00 AM to 4:30 PM
   for (let hour = minHour; hour <= maxHour; hour++) {
     allowedTimes.push((hour < 10 ? '0' : '') + hour + ':00');
-    if (hour < maxHour || (hour === maxHour && maxHour === 16)) {
+    // Only add :30 if not the last hour (16), or if we're still in allowed hours
+    if (hour < maxHour) {
       allowedTimes.push((hour < 10 ? '0' : '') + hour + ':30');
+    } else if (hour === maxHour) {
+      // For the last hour (16 = 4 PM), include 4:30
+      allowedTimes.push('16:30');
     }
   }
 

@@ -30,7 +30,20 @@ fetchNotifications();
 // Booking state
 let bookingData = { appointment_date:'', service_category:'', document_type:'', purpose:'', appointment_time:'' };
 function formatDateYYYYMMDD(date){ return date.toISOString().split('T')[0]; }
-function getMinBookingDateTime(){ const now=new Date(); now.setHours(now.getHours()+24); if (now.getMinutes()>0||now.getSeconds()>0||now.getMilliseconds()>0){ now.setHours(now.getHours()+1,0,0,0);} else { now.setMinutes(0,0,0);} return now; }
+function getMinBookingDateTime(){ 
+  const now=new Date(); 
+  now.setHours(now.getHours()+24); 
+  if (now.getMinutes()>0||now.getSeconds()>0||now.getMilliseconds()>0){ 
+    now.setHours(now.getHours()+1,0,0,0);
+  } else { 
+    now.setMinutes(0,0,0);
+  } 
+  // Skip Sunday
+  while (now.getDay() === 0) {
+    now.setDate(now.getDate() + 1);
+  }
+  return now; 
+}
 function formatDate(value){ const opts={ year:'numeric', month:'short', day:'numeric' }; if(typeof value==='string' && /^\d{4}-\d{2}-\d{2}$/.test(value)){ const [y,m,d] = value.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString(undefined,opts); } const dt=new Date(value); return isNaN(dt)? value : dt.toLocaleDateString(undefined,opts); }
 function formatTime(value){ const [hh,mm] = value.substring(0,5).split(':').map(Number); const is24 = localStorage.getItem('timeFormat')==='24'; if(is24) return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`; const suffix = hh>=12? 'PM':'AM'; const h12 = hh%12 || 12; return `${h12}:${String(mm).padStart(2,'0')} ${suffix}`; }
 
@@ -38,8 +51,37 @@ function showBookingStep(step){ for(let i=1;i<=4;i++){ const el=document.getElem
 
 // Step 1
 const dateInput=document.getElementById('appointment_date_step1'); const nextToServiceBtn=document.getElementById('nextToServiceBtn');
-if(dateInput){ const minDate=getMinBookingDateTime(); dateInput.min = formatDateYYYYMMDD(minDate); }
-if(nextToServiceBtn){ nextToServiceBtn.addEventListener('click', ()=>{ const err=document.getElementById('error_date_step1'); if(!dateInput.value){ err.textContent='Please select a date'; return;} err.textContent=''; bookingData.appointment_date=dateInput.value; const disp=document.getElementById('selectedDateDisplay'); if(disp) disp.textContent = formatDate(bookingData.appointment_date); showBookingStep(2); }); }
+if(dateInput){ 
+  const minDate=getMinBookingDateTime(); 
+  dateInput.min = formatDateYYYYMMDD(minDate); 
+  // Disable Sundays - clear input if Sunday selected
+  const validateSunday = (e) => {
+    const selectedDate = new Date(e.target.value + 'T00:00:00');
+    if (e.target.value && selectedDate.getDay() === 0) {
+      e.target.value = '';
+      showToast('Appointments cannot be scheduled on Sundays. Please select Monday-Saturday.', 'error');
+      bookingData.appointment_date = '';
+    }
+  };
+  dateInput.addEventListener('input', validateSunday);
+  dateInput.addEventListener('change', validateSunday);
+}
+if(nextToServiceBtn){ nextToServiceBtn.addEventListener('click', ()=>{ 
+  const err=document.getElementById('error_date_step1'); 
+  if(!dateInput.value){ err.textContent='Please select a date'; return;} 
+  // Check if selected date is Sunday
+  const selectedDate = new Date(dateInput.value + 'T00:00:00');
+  if (selectedDate.getDay() === 0) {
+    err.textContent = 'Appointments cannot be scheduled on Sundays. Please select Monday-Saturday.';
+    dateInput.value = '';
+    return;
+  }
+  err.textContent=''; 
+  bookingData.appointment_date=dateInput.value; 
+  const disp=document.getElementById('selectedDateDisplay'); 
+  if(disp) disp.textContent = formatDate(bookingData.appointment_date); 
+  showBookingStep(2); 
+}); }
 
 // Step 2
 const nextToPurposeBtn=document.getElementById('nextToPurposeBtn'); const backToDateBtn=document.getElementById('backToDateBtn');

@@ -2216,7 +2216,7 @@ body.dark-mode .service-option input[type="radio"]:checked::before {
   border-radius:12px;
   background:#fff;
   display:grid;
-  grid-template-columns:80px repeat(5, 1fr);
+  grid-template-columns:80px repeat(6, 1fr);
   position:relative;
   font-size:12px;
   overflow:hidden;

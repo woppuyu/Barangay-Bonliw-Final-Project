@@ -196,27 +196,53 @@ function renderPieChart(container, data, onClick) {
   svg.style.display = 'block';
 
   const colors = ['#3182ce','#38a169','#d69e2e','#e53e3e','#805ad5','#dd6b20'];
+  const statusColors = {
+    'pending': '#fde047',
+    'approved': '#86efac',
+    'completed': '#60a5fa',
+    'rejected': '#f87171'
+  };
   let startAngle = -Math.PI / 2;
   data.forEach((d, i) => {
     const fraction = d.count / total;
     const endAngle = startAngle + fraction * Math.PI * 2;
-    const x1 = cx + radius * Math.cos(startAngle);
-    const y1 = cy + radius * Math.sin(startAngle);
-    const x2 = cx + radius * Math.cos(endAngle);
-    const y2 = cy + radius * Math.sin(endAngle);
-    const largeArc = fraction > 0.5 ? 1 : 0;
     const path = document.createElementNS(svgNS, 'path');
-    const dPath = `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+    let dPath;
+    
+    // Special case: if this is 100% of the pie (single data point), draw a full circle
+    if (fraction >= 0.9999) {
+      // Full circle: move to top, draw arc halfway, draw arc back to top
+      dPath = `M ${cx} ${cy - radius} A ${radius} ${radius} 0 1 1 ${cx} ${cy + radius} A ${radius} ${radius} 0 1 1 ${cx} ${cy - radius} Z`;
+    } else {
+      // Normal arc for partial slices
+      const x1 = cx + radius * Math.cos(startAngle);
+      const y1 = cy + radius * Math.sin(startAngle);
+      const x2 = cx + radius * Math.cos(endAngle);
+      const y2 = cy + radius * Math.sin(endAngle);
+      const largeArc = fraction > 0.5 ? 1 : 0;
+      dPath = `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+    }
+    
     path.setAttribute('d', dPath);
-    path.setAttribute('fill', colors[i % colors.length]);
+    // Use status-specific color if available, otherwise fall back to generic colors
+    const color = statusColors[d.status] || colors[i % colors.length];
+    path.setAttribute('fill', color);
     path.style.cursor = 'pointer';
     path.addEventListener('click', () => onClick && onClick(d));
     svg.appendChild(path);
 
     // Label
-    const midAngle = (startAngle + endAngle) / 2;
-    const lx = cx + (radius + 12) * Math.cos(midAngle);
-    const ly = cy + (radius + 12) * Math.sin(midAngle);
+    let lx, ly;
+    if (fraction >= 0.9999) {
+      // For full circle, place label at top
+      lx = cx;
+      ly = cy - radius - 20;
+    } else {
+      // For partial slices, place at midpoint
+      const midAngle = (startAngle + endAngle) / 2;
+      lx = cx + (radius + 12) * Math.cos(midAngle);
+      ly = cy + (radius + 12) * Math.sin(midAngle);
+    }
     const label = document.createElement('div');
     label.style.position = 'absolute';
     label.style.left = `${lx}px`;
@@ -227,6 +253,8 @@ function renderPieChart(container, data, onClick) {
     label.style.whiteSpace = 'nowrap';
     label.textContent = `${d.status} (${d.count})`;
     chartWrapper.appendChild(label);
+    
+    startAngle = endAngle;
 
     startAngle = endAngle;
   });

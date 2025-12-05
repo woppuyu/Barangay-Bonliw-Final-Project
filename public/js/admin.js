@@ -139,6 +139,20 @@ async function loadAppointments() {
   }
 }
 
+// Helper function to disable Sundays in date inputs for admin
+function disableSundaysInAdminDateInput(dateInput) {
+  if (!dateInput) return;
+  
+  dateInput.addEventListener('input', (e) => {
+    const selectedDate = new Date(e.target.value + 'T00:00:00');
+    if (e.target.value && selectedDate.getDay() === 0) { // Sunday
+      // Clear the input and show toast
+      e.target.value = '';
+      showToast('Cannot reschedule to Sunday. Office hours are Monday-Saturday.', 'error');
+    }
+  });
+}
+
 // Open update modal
 function openUpdateModal(id, status, notes) {
   document.getElementById('appointmentId').value = id;
@@ -155,6 +169,9 @@ function openUpdateModal(id, status, notes) {
     // Set min to today so past dates are greyed out
     const today = toLocalISODate(new Date());
     dateInput.min = today;
+    
+    // Disable Sundays in date picker
+    disableSundaysInAdminDateInput(dateInput);
     
     timeInput.value = apt.appointment_time;
   } else {
@@ -182,6 +199,19 @@ document.getElementById('updateForm').addEventListener('submit', async (e) => {
     newTime = document.getElementById('updateTime').value || apt.appointment_time;
     dateChanged = (newDate !== apt.appointment_date) || (newTime !== apt.appointment_time);
     if (dateChanged) {
+      // Validate date is Monday-Saturday
+      const selectedDate = new Date(newDate + 'T00:00:00');
+      if (selectedDate.getDay() === 0) {
+        showToast('Cannot reschedule to Sunday. Office hours are Monday-Saturday.', 'error');
+        return;
+      }
+      // Validate time is between 7:00 and 16:30
+      const [hours, minutes] = newTime.split(':').map(Number);
+      if (hours < 7 || hours > 16 || (hours === 16 && minutes > 30)) {
+        showToast('Appointment time must be between 7:00 AM and 4:30 PM.', 'error');
+        return;
+      }
+      
       const originalDT = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
       const newDT = new Date(`${newDate}T${newTime}`);
       if (isNaN(newDT.getTime())) {
@@ -313,10 +343,13 @@ function addDays(d, n) {
 }
 
 const HALF_HOUR_SLOTS = [];
-for (let h=7; h<=16; h++) { // 7AM to 4:30PM
+for (let h=7; h<16; h++) { // 7AM to 3:30PM
   HALF_HOUR_SLOTS.push(`${String(h).padStart(2,'0')}:00:00`);
   HALF_HOUR_SLOTS.push(`${String(h).padStart(2,'0')}:30:00`);
 }
+// Add final 4:00 PM and 4:30 PM slots
+HALF_HOUR_SLOTS.push('16:00:00');
+HALF_HOUR_SLOTS.push('16:30:00');
 
 function renderLegend() {
   calendarLegend.innerHTML = '';
@@ -352,7 +385,7 @@ function renderWeeklyCalendar() {
   const is24 = localStorage.getItem('timeFormat') === '24';
   // Date-only boundaries to avoid timezone inconsistencies
   const weekStartISO = toLocalISODate(currentWeekStart);
-  const weekEndISO = toLocalISODate(addDays(currentWeekStart,4)); // Monday-Friday
+  const weekEndISO = toLocalISODate(addDays(currentWeekStart, 5)); // Monday-Saturday (6 days)
   const appointments = applyFilter((window.appointmentsList || []).map(a => {
     // Normalize date to YYYY-MM-DD
     const normDate = (typeof a.appointment_date === 'string') ? a.appointment_date.substring(0,10) : toLocalISODate(new Date(a.appointment_date));
@@ -361,7 +394,7 @@ function renderWeeklyCalendar() {
 
   // Build a map: key = date (YYYY-MM-DD) -> array of appointments
   const dayMap = {};
-  for (let i=0;i<5;i++) { // Monday-Friday
+  for (let i=0;i<6;i++) { // Monday-Saturday
     const d = addDays(currentWeekStart,i);
     const iso = toLocalISODate(d);
     dayMap[iso] = [];
@@ -396,8 +429,8 @@ function renderWeeklyCalendar() {
   });
   weeklyCalendarEl.appendChild(timeCol);
 
-  // Day columns Monday-Friday
-  for (let i=0;i<5;i++) {
+  // Day columns Monday-Saturday
+  for (let i=0;i<6;i++) {
     const d = addDays(currentWeekStart,i);
     const iso = toLocalISODate(d);
     const dayCol = document.createElement('div');
@@ -415,8 +448,19 @@ function renderWeeklyCalendar() {
       cell.dataset.time = t;
       dayCol.appendChild(cell);
     });
-    // Place appointments for this day
-    (dayMap[iso]||[]).forEach(a => {
+    // Place appointments for this day with priority sorting
+    // Priority: completed > approved > pending > rejected
+    const statusPriority = { 'completed': 1, 'approved': 2, 'pending': 3, 'rejected': 4 };
+    const sortedAppointments = (dayMap[iso]||[]).sort((a, b) => {
+      const timeCompare = a.appointment_time.localeCompare(b.appointment_time);
+      if (timeCompare !== 0) return timeCompare;
+      return (statusPriority[a.status] || 999) - (statusPriority[b.status] || 999);
+    });
+    
+    // Track which time slots already have appointments displayed
+    const displayedSlots = new Set();
+    
+    sortedAppointments.forEach(a => {
       // Find position
       // Support appointment_time stored as 'HH:MM' or 'HH:MM:SS'
       const baseTime = a.appointment_time.substring(0,5); // HH:MM
@@ -426,6 +470,13 @@ function renderWeeklyCalendar() {
         // console.debug('Calendar placement failed (admin):', a.appointment_time, 'base', baseTime);
         return;
       }
+      
+      // Skip if this time slot already has an appointment displayed (show only highest priority)
+      if (displayedSlots.has(slotIndex)) {
+        return;
+      }
+      displayedSlots.add(slotIndex);
+      
       const durationSlots = 1; // default 30 minutes (1 half-hour slot)
       const block = document.createElement('div');
       block.className = `appointment-block ${a.status}`;
@@ -457,6 +508,8 @@ function switchToWeekView() {
   appointmentsTableContainer.style.display = 'none';
   weeklyCalendarContainer.style.display = 'block';
   if (weekNav) weekNav.style.display = 'flex';
+  const filterToggleBtn = document.getElementById('filterToggleBtn');
+  if (filterToggleBtn) filterToggleBtn.style.display = 'none';
   // Button active styling
   if (tableViewBtn && weekViewBtn) {
     tableViewBtn.classList.remove('btn-primary');
@@ -472,6 +525,8 @@ function switchToTableView() {
   weeklyCalendarContainer.style.display = 'none';
   appointmentsTableContainer.style.display = 'block';
   if (weekNav) weekNav.style.display = 'none';
+  const filterToggleBtn = document.getElementById('filterToggleBtn');
+  if (filterToggleBtn) filterToggleBtn.style.display = 'block';
   // Button active styling
   if (tableViewBtn && weekViewBtn) {
     weekViewBtn.classList.remove('btn-primary');
@@ -493,13 +548,16 @@ function getAdminFilters(){
   const service = document.getElementById('filterService')?.value || '';
   const status = document.getElementById('filterStatus')?.value || '';
   const date = document.getElementById('filterDate')?.value || '';
-  return { service, status, date };
+  const month = document.getElementById('filterMonth')?.value || '';
+  const year = document.getElementById('filterYear')?.value || '';
+  return { service, status, date, month, year };
 }
 
-function applyFilter(list, { service, status, date }){
+function applyFilter(list, { service, status, date, month, year }){
   return (list||[]).filter(a => {
     const okService = !service || (a.service_category === service);
     const okStatus = !status || (a.status === status);
+    
     // Always compare on the stored date component (YYYY-MM-DD)
     let apptDate;
     if (typeof a.appointment_date === 'string') {
@@ -507,11 +565,32 @@ function applyFilter(list, { service, status, date }){
     } else {
       apptDate = toLocalISODate(new Date(a.appointment_date));
     }
+    
+    // Extract year and month from appointment date (YYYY-MM-DD format)
+    const [apptYear, apptMonth, apptDay] = apptDate.split('-');
+    
+    // Check if date matches (specific date filter)
     const okDate = !date || (apptDate === date);
+    
+    // Check if month matches (month/year filter)
+    const okMonth = !month || (apptMonth === month);
+    
+    // Check if year matches (month/year filter)
+    const okYear = !year || (apptYear === year);
+    
+    // If specific date is provided, use that; otherwise use month/year filters
+    let okDateRange = true;
     if (date) {
-      console.log(`Compare: apptDate="${apptDate}" vs filterDate="${date}", match=${okDate}, raw="${a.appointment_date}", type=${typeof a.appointment_date}`);
+      okDateRange = okDate;
+    } else if (month || year) {
+      okDateRange = okMonth && okYear;
     }
-    return okService && okStatus && okDate;
+    
+    if (date || month || year) {
+      console.log(`Compare: apptDate="${apptDate}" vs filterDate="${date}", month="${month}", year="${year}", match=${okDateRange}`);
+    }
+    
+    return okService && okStatus && okDateRange;
   });
 }
 

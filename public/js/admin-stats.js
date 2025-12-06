@@ -31,7 +31,7 @@ const now = new Date();
 const currentYear = now.getFullYear();
 const currentMonth = now.getMonth() + 1;
 
-for (let y = currentYear - 3; y <= currentYear + 1; y++) {
+for (let y = 2020; y <= currentYear + 1; y++) {
   const optY1 = document.createElement('option');
   optY1.value = y;
   optY1.textContent = y;

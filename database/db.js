@@ -122,7 +122,16 @@ async function seedDefaults() {
   // Generate time slots for next 30 days only if not present
   const { rows: slotCheck } = await pool.query('SELECT COUNT(*) FROM time_slots');
   if (parseInt(slotCheck[0].count, 10) === 0) {
-    const times = ['09:00:00','10:00:00','11:00:00','13:00:00','14:00:00','15:00:00','16:00:00'];
+    // Generate 30-min intervals from 7:30 AM to 4:30 PM (office hours)
+    const times = [];
+    for (let h = 7; h <= 16; h++) {
+      for (let m = 0; m < 60; m += 30) {
+        if (h === 7 && m === 0) continue; // Skip 7:00 AM
+        if (h === 16 && m > 30) break;    // Stop after 4:30 PM
+        times.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`);
+      }
+    }
+    
     const start = new Date();
     const client = await pool.connect();
     try {
@@ -130,7 +139,8 @@ async function seedDefaults() {
       for (let i = 1; i <= 30; i++) {
         const d = new Date(start);
         d.setDate(start.getDate() + i);
-        const dateStr = d.toISOString().slice(0,10);
+        // Use local date formatting to avoid UTC conversion issues
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         for (const t of times) {
           await client.query(
             `INSERT INTO time_slots (date, time) VALUES ($1,$2)

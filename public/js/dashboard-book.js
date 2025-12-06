@@ -29,7 +29,12 @@ fetchNotifications();
 
 // Booking state
 let bookingData = { appointment_date:'', service_category:'', document_type:'', purpose:'', appointment_time:'' };
-function formatDateYYYYMMDD(date){ return date.toISOString().split('T')[0]; }
+
+// Convert Date to YYYY-MM-DD using local timezone (not UTC)
+function formatDateYYYYMMDD(date){ 
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 function getMinBookingDateTime(){ 
   const now=new Date(); 
   now.setHours(now.getHours()+24); 
@@ -102,7 +107,7 @@ if(submitAppointmentBtn){ submitAppointmentBtn.addEventListener('click', async (
  bookingData={ appointment_date:'', service_category:'', document_type:'', purpose:'', appointment_time:'' }; if(dateInput) dateInput.value=''; document.querySelectorAll('input[name="service_category"]').forEach(r=>r.checked=false); if(documentTypeSelect) documentTypeSelect.value=''; if(purposeInput) purposeInput.value=''; if(appointmentTimeSelect) appointmentTimeSelect.innerHTML = '<option value="">Select a date first</option>'; setTimeout(()=>{ window.location.href='/my-appointments'; }, 1500); } else { showToast(data.error||'Failed to book appointment.','error'); } } catch(err){ showToast('Failed to book appointment.','error'); } }); }
 
 async function loadAvailableTimeSlots(){ const date=bookingData.appointment_date; appointmentTimeSelect.innerHTML='<option value="">Loading...</option>'; let minHour=7; let maxHour=16; const minDate=getMinBookingDateTime(); const selectedDate=new Date(date+'T00:00:00'); if(formatDateYYYYMMDD(selectedDate)===formatDateYYYYMMDD(minDate)){ minHour = Math.max(minHour, minDate.getHours()); }
-  const times=[]; for(let h=minHour; h<=maxHour; h++){ times.push(`${String(h).padStart(2,'0')}:00`); if(h<maxHour || (h===maxHour && maxHour===16)){ times.push(`${String(h).padStart(2,'0')}:30`); } }
+  const times=[]; for(let h=minHour; h<=maxHour; h++){ for(let m=0; m<60; m+=30){ if(h===minHour && m===0) continue; if(h===maxHour && m>0) break; times.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`); } } times.push('16:30');
   appointmentTimeSelect.innerHTML='<option value="">Select Time</option>'; times.forEach(t=>{ const opt=document.createElement('option'); opt.value=t; opt.textContent=formatTime(t); appointmentTimeSelect.appendChild(opt); }); }
 
 // Logout

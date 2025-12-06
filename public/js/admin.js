@@ -166,8 +166,9 @@ function openUpdateModal(id, status, notes) {
     const timeInput = document.getElementById('updateTime');
     dateInput.value = (apt.appointment_date || '').toString().substring(0,10);
     
-    // Set min to today so past dates are greyed out
-    const today = toLocalISODate(new Date());
+    // Set min to today so past dates are greyed out (use local date format)
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     dateInput.min = today;
     
     // Disable Sundays in date picker
@@ -383,12 +384,14 @@ function renderWeeklyCalendar() {
   if (!weeklyCalendarEl) return;
   const filters = getAdminFilters();
   const is24 = localStorage.getItem('timeFormat') === '24';
-  // Date-only boundaries to avoid timezone inconsistencies
-  const weekStartISO = toLocalISODate(currentWeekStart);
-  const weekEndISO = toLocalISODate(addDays(currentWeekStart, 5)); // Monday-Saturday (6 days)
+  // Date-only boundaries - dates from database are already local YYYY-MM-DD format
+  // Format: YYYY-MM-DD (no timezone conversion needed)
+  const weekStartISO = `${currentWeekStart.getFullYear()}-${String(currentWeekStart.getMonth() + 1).padStart(2, '0')}-${String(currentWeekStart.getDate()).padStart(2, '0')}`;
+  const weekEndDate = addDays(currentWeekStart, 5);
+  const weekEndISO = `${weekEndDate.getFullYear()}-${String(weekEndDate.getMonth() + 1).padStart(2, '0')}-${String(weekEndDate.getDate()).padStart(2, '0')}`;
   const appointments = applyFilter((window.appointmentsList || []).map(a => {
-    // Normalize date to YYYY-MM-DD
-    const normDate = (typeof a.appointment_date === 'string') ? a.appointment_date.substring(0,10) : toLocalISODate(new Date(a.appointment_date));
+    // Dates from database are already in YYYY-MM-DD local format, use directly
+    const normDate = (typeof a.appointment_date === 'string') ? a.appointment_date.substring(0,10) : a.appointment_date;
     return { ...a, _date: normDate };
   }), filters).filter(a => a._date >= weekStartISO && a._date <= weekEndISO);
 
@@ -396,7 +399,7 @@ function renderWeeklyCalendar() {
   const dayMap = {};
   for (let i=0;i<6;i++) { // Monday-Saturday
     const d = addDays(currentWeekStart,i);
-    const iso = toLocalISODate(d);
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     dayMap[iso] = [];
   }
   appointments.forEach(a => {
@@ -432,7 +435,7 @@ function renderWeeklyCalendar() {
   // Day columns Monday-Saturday
   for (let i=0;i<6;i++) {
     const d = addDays(currentWeekStart,i);
-    const iso = toLocalISODate(d);
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const dayCol = document.createElement('div');
     dayCol.className = 'day-column';
     const header = document.createElement('div');
@@ -563,7 +566,9 @@ function applyFilter(list, { service, status, date, month, year }){
     if (typeof a.appointment_date === 'string') {
       apptDate = a.appointment_date.substring(0, 10);
     } else {
-      apptDate = toLocalISODate(new Date(a.appointment_date));
+      // Convert to YYYY-MM-DD without timezone conversion
+      const d = new Date(a.appointment_date);
+      apptDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
     
     // Extract year and month from appointment date (YYYY-MM-DD format)

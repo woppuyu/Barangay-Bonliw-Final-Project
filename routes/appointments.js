@@ -2,23 +2,52 @@ const express = require('express');
 const { pool } = require('../database/db');
 const { verifyToken } = require('./auth');
 const { sendAppointmentConfirmation, sendStatusUpdate } = require('../services/email');
+const {
+  dateStringToPhilippineDate,
+  dateToPhilippineDateString,
+  isTimeWithinOfficeHours,
+  isOfficeOpen
+} = require('../lib/timezone');
 
 const router = express.Router();
 
-// Get available time slots
+// Get available time slots for a date
 router.get('/time-slots', verifyToken, async (req, res) => {
   const { date } = req.query;
   try {
-    const params = [];
-    let query = `SELECT * FROM time_slots WHERE is_available = TRUE`;
-    if (date) {
-      query += ` AND date = $1`;
-      params.push(date);
+    if (!date) {
+      return res.status(400).json({ error: 'Date parameter required' });
     }
-    query += ` ORDER BY date, time`;
-    const { rows } = await pool.query(query, params);
-    res.json(rows);
+
+    // Get all appointments for this date
+    const { rows: booked } = await pool.query(
+      `SELECT appointment_time FROM appointments 
+       WHERE appointment_date = $1 AND status IN ('pending', 'approved')`,
+      [date]
+    );
+
+    const bookedTimes = new Set(booked.map(a => a.appointment_time));
+
+    // Generate all 30-min slots from 7:30 AM to 4:30 PM
+    const slots = [];
+    for (let h = 7; h <= 16; h++) {
+      for (let m = 0; m < 60; m += 30) {
+        if (h === 7 && m === 0) continue; // Skip 7:00 AM
+        if (h === 16 && m > 30) break;    // Stop after 4:30 PM
+        
+        const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+        const isAvailable = !bookedTimes.has(timeStr);
+        
+        slots.push({
+          time: timeStr,
+          is_available: isAvailable
+        });
+      }
+    }
+
+    res.json(slots);
   } catch (e) {
+    console.error('Time slots error:', e);
     res.status(500).json({ error: 'Failed to fetch time slots' });
   }
 });
@@ -32,15 +61,30 @@ router.post('/', verifyToken, async (req, res) => {
     return res.status(400).json({ error: 'Please provide all required fields' });
   }
 
+  // Validate date and time
+  if (!isOfficeOpen(appointment_date)) {
+    return res.status(400).json({ error: 'Office is closed on Sundays. Please select Monday-Saturday.' });
+  }
+
+  if (!isTimeWithinOfficeHours(appointment_time)) {
+    return res.status(400).json({ error: 'Appointment time must be between 7:30 AM and 4:30 PM.' });
+  }
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    // lock the slot row for update to avoid race conditions
-    const { rows: slotRows } = await client.query(
-      `SELECT * FROM time_slots WHERE date = $1 AND time = $2 AND is_available = TRUE FOR UPDATE`,
+    
+    // Check for existing appointment at this time slot (prevent double-booking)
+    const { rows: existingAppts } = await client.query(
+      `SELECT id FROM appointments 
+       WHERE appointment_date = $1 AND appointment_time = $2 
+       AND status IN ('pending', 'approved')
+       LIMIT 1
+       FOR UPDATE`,
       [appointment_date, appointment_time]
     );
-    if (slotRows.length === 0) {
+    
+    if (existingAppts.length > 0) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Time slot not available' });
     }
@@ -49,11 +93,6 @@ router.post('/', verifyToken, async (req, res) => {
       `INSERT INTO appointments (user_id, service_category, document_type, purpose, appointment_date, appointment_time)
        VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
       [user_id, service_category, document_type || null, purpose, appointment_date, appointment_time]
-    );
-
-    await client.query(
-      `UPDATE time_slots SET is_available = FALSE WHERE date = $1 AND time = $2`,
-      [appointment_date, appointment_time]
     );
 
     await client.query('COMMIT');
@@ -94,7 +133,10 @@ router.get('/my-appointments', verifyToken, async (req, res) => {
   try {
     const { rows } = await pool.query(
       // Show most recently booked first (use created_at if available, else id)
-      `SELECT * FROM appointments WHERE user_id = $1 ORDER BY created_at DESC NULLS LAST, id DESC`,
+      `SELECT id, user_id, service_category, document_type, purpose, 
+              appointment_date::text as appointment_date, appointment_time, 
+              status, notes, created_at, updated_at 
+       FROM appointments WHERE user_id = $1 ORDER BY created_at DESC NULLS LAST, id DESC`,
       [req.userId]
     );
     res.json(rows);
@@ -110,7 +152,10 @@ router.get('/all', verifyToken, async (req, res) => {
   }
   try {
     const { rows } = await pool.query(
-      `SELECT a.*, u.first_name, u.last_name, u.middle_name, u.phone, u.email
+      `SELECT a.id, a.user_id, a.service_category, a.document_type, a.purpose, 
+              a.appointment_date::text as appointment_date, a.appointment_time, 
+              a.status, a.notes, a.created_at, a.updated_at,
+              u.first_name, u.last_name, u.middle_name, u.phone, u.email
        FROM appointments a
        JOIN users u ON a.user_id = u.id
        ORDER BY a.created_at DESC NULLS LAST, a.id DESC`
@@ -195,6 +240,15 @@ router.put('/:id/reschedule', verifyToken, async (req, res) => {
     return res.status(400).json({ error: 'New date and time are required' });
   }
 
+  // Validate new date and time
+  if (!isOfficeOpen(newDate)) {
+    return res.status(400).json({ error: 'Office is closed on Sundays. Please select Monday-Saturday.' });
+  }
+
+  if (!isTimeWithinOfficeHours(newTime)) {
+    return res.status(400).json({ error: 'Appointment time must be between 7:30 AM and 4:30 PM.' });
+  }
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -213,44 +267,24 @@ router.put('/:id/reschedule', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'Only pending appointments can be rescheduled' });
     }
 
-    const originalDateTime = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
-    const newDateTime = new Date(`${newDate}T${newTime}`);
-    if (isNaN(newDateTime.getTime())) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'Invalid new date/time' });
-    }
-    if (newDateTime < originalDateTime) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'New date/time must be same or after original' });
-    }
-
     // If unchanged, short-circuit
     if (apt.appointment_date === newDate && apt.appointment_time === newTime) {
       await client.query('ROLLBACK');
       return res.json({ message: 'No changes - appointment kept', appointment: apt });
     }
 
-    // Ensure new slot available
-    const { rows: newSlotRows } = await client.query(
-      'SELECT * FROM time_slots WHERE date = $1 AND time = $2 AND is_available = TRUE FOR UPDATE',
-      [newDate, newTime]
+    // Check if new slot is already booked
+    const { rows: existingAppts } = await client.query(
+      `SELECT id FROM appointments 
+       WHERE appointment_date = $1 AND appointment_time = $2 
+       AND id != $3 AND status IN ('pending', 'approved')
+       FOR UPDATE`,
+      [newDate, newTime, id]
     );
-    if (newSlotRows.length === 0) {
+    if (existingAppts.length > 0) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Desired new time slot is not available' });
     }
-
-    // Free old slot
-    await client.query(
-      'UPDATE time_slots SET is_available = TRUE WHERE date = $1 AND time = $2',
-      [apt.appointment_date, apt.appointment_time]
-    );
-
-    // Reserve new slot
-    await client.query(
-      'UPDATE time_slots SET is_available = FALSE WHERE date = $1 AND time = $2',
-      [newDate, newTime]
-    );
 
     // Update appointment
     await client.query(
@@ -262,6 +296,7 @@ router.put('/:id/reschedule', verifyToken, async (req, res) => {
     res.json({ message: 'Appointment rescheduled successfully', appointment_id: apt.id, old: { date: apt.appointment_date, time: apt.appointment_time }, new: { date: newDate, time: newTime } });
   } catch (e) {
     await client.query('ROLLBACK');
+    console.error('Reschedule error:', e);
     res.status(500).json({ error: 'Failed to reschedule appointment' });
   } finally {
     client.release();
@@ -299,12 +334,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
       return res.status(404).json({ error: 'Appointment not found or access denied' });
     }
 
-    const apt = aptRows[0];
     await client.query(`DELETE FROM appointments WHERE id = $1`, [id]);
-    await client.query(
-      `UPDATE time_slots SET is_available = TRUE WHERE date = $1 AND time = $2`,
-      [apt.appointment_date, apt.appointment_time]
-    );
     await client.query('COMMIT');
     res.json({ message: 'Appointment deleted successfully' });
   } catch (e) {
